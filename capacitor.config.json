@@ -1,0 +1,9 @@
+{
+  "appId": "app.lovable.56f304b167e54b9f87344274dd3528ea",
+  "appName": "Screenshot Shelf",
+  "webDir": "dist",
+  "server": {
+    "url": "https://56f304b1-67e5-4b9f-8734-4274dd3528ea.lovableproject.com?forceHideBadge=true",
+    "cleartext": true
+  }
+}
