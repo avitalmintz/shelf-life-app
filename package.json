@@ -1,7 +1,21 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "screenshot-shelf",
   "private": true,
   "version": "0.0.0",
+  "description": "A mobile-first screenshot shelf with iOS share import, AI categorization, custom categories, and local-first storage.",
+  "author": "Avital Mintz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/avitalmintz/shelf-life.git"
+  },
+  "keywords": [
+    "screenshots",
+    "capacitor",
+    "ios",
+    "react",
+    "pwa",
+    "ai"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
