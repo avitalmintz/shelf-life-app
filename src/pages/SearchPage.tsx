@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useShelf } from "@/lib/storage";
-import { CATEGORIES, Category, PRIORITIES, Priority, STATUSES, Status } from "@/lib/types";
+import { Category, STATUSES, Status } from "@/lib/types";
+import { useCategories } from "@/lib/categories";
 import ItemCard from "@/components/ItemCard";
 import { Input } from "@/components/ui/input";
 import { Search as SearchIcon, X } from "lucide-react";
@@ -11,10 +12,10 @@ type SortKey = "newest" | "oldest";
 
 export default function SearchPage() {
   const { items } = useShelf();
+  const categories = useCategories();
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<Category | "all">((params.get("cat") as Category) || "all");
-  const [prio, setPrio] = useState<Priority | "all">("all");
   const [status, setStatus] = useState<Status | "all">("all");
   const [sort, setSort] = useState<SortKey>("newest");
 
@@ -25,9 +26,8 @@ export default function SearchPage() {
 
   const results = useMemo(() => {
     const ql = q.trim().toLowerCase();
-    let r = items.filter(i => {
+    const r = items.filter(i => {
       if (cat !== "all" && i.category !== cat) return false;
-      if (prio !== "all" && i.priority !== prio) return false;
       if (status !== "all" && i.status !== status) return false;
       if (ql) {
         const hay = `${i.title} ${i.notes ?? ""} ${i.category}`.toLowerCase();
@@ -41,7 +41,7 @@ export default function SearchPage() {
         : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
     return r;
-  }, [items, q, cat, prio, status, sort]);
+  }, [items, q, cat, status, sort]);
 
   const clearCat = () => { setCat("all"); setParams({}); };
 
@@ -62,24 +62,18 @@ export default function SearchPage() {
       {/* Categories */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4">
         <FilterChip active={cat === "all"} onClick={clearCat} label="All" />
-        {CATEGORIES.map(c => (
+        {categories.map(c => (
           <FilterChip
             key={c.value}
             active={cat === c.value}
             onClick={() => setCat(c.value)}
-            label={`${c.emoji} ${c.label}`}
+            label={c.label}
             tone={c.tw}
           />
         ))}
       </div>
 
-      {/* Priority + status */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4">
-        <FilterChip active={prio === "all"} onClick={() => setPrio("all")} label="Any priority" />
-        {PRIORITIES.map(p => (
-          <FilterChip key={p.value} active={prio === p.value} onClick={() => setPrio(p.value)} label={p.label} tone={p.tw} />
-        ))}
-      </div>
+      {/* Status */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4">
         <FilterChip active={status === "all"} onClick={() => setStatus("all")} label="Any status" />
         {STATUSES.map(s => (

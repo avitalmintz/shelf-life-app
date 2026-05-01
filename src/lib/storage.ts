@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ShelfItem } from "./types";
+import { cancelReminder, scheduleReminder } from "./reminders";
+import { compressDataUrlForStorage, dataUrlSize } from "./imageCompression";
+import { deleteStoredImage } from "./imageStore";
 
 const KEY = "screenshot-shelf:items:v1";
 
@@ -14,8 +17,38 @@ function read(): ShelfItem[] {
 }
 
 function write(items: ShelfItem[]) {
-  localStorage.setItem(KEY, JSON.stringify(items));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(items));
+  } catch (error) {
+    const isQuotaError =
+      error instanceof DOMException &&
+      (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED");
+
+    if (isQuotaError) {
+      throw new Error("Storage quota exceeded. Delete a few large screenshots or import a smaller image.");
+    }
+
+    throw error;
+  }
   window.dispatchEvent(new CustomEvent("shelf:changed"));
+}
+
+export async function compactStoredImages(maxBytes = 140_000): Promise<number> {
+  const items = read();
+  let changed = 0;
+  const compacted = await Promise.all(
+    items.map(async item => {
+      if (!item.image.startsWith("data:image/") || dataUrlSize(item.image) <= maxBytes) {
+        return item;
+      }
+      const image = await compressDataUrlForStorage(item.image, maxBytes);
+      if (image === item.image) return item;
+      changed += 1;
+      return { ...item, image, updatedAt: new Date().toISOString() };
+    }),
+  );
+  if (changed > 0) write(compacted);
+  return changed;
 }
 
 export function useShelf() {
@@ -41,18 +74,42 @@ export function useShelf() {
     };
     const next = [newItem, ...read()];
     write(next);
+    if (newItem.reminderDate) {
+      void scheduleReminder({
+        id: newItem.id,
+        title: newItem.title || "Screenshot Shelf reminder",
+        body: newItem.notes,
+        date: newItem.reminderDate,
+      }).catch(() => undefined);
+    }
     return newItem;
   }, []);
 
   const update = useCallback((id: string, patch: Partial<ShelfItem>) => {
+    let updatedItem: ShelfItem | undefined;
     const next = read().map(i =>
-      i.id === id ? { ...i, ...patch, updatedAt: new Date().toISOString() } : i
+      i.id === id ? (updatedItem = { ...i, ...patch, updatedAt: new Date().toISOString() }) : i
     );
     write(next);
+    if (updatedItem && "reminderDate" in patch) {
+      if (updatedItem.reminderDate) {
+        void scheduleReminder({
+          id: updatedItem.id,
+          title: updatedItem.title || "Screenshot Shelf reminder",
+          body: updatedItem.notes,
+          date: updatedItem.reminderDate,
+        }).catch(() => undefined);
+      } else {
+        void cancelReminder(id).catch(() => undefined);
+      }
+    }
   }, []);
 
   const remove = useCallback((id: string) => {
+    const item = read().find(i => i.id === id);
     write(read().filter(i => i.id !== id));
+    void deleteStoredImage(item?.imageStorageKey).catch(() => undefined);
+    void cancelReminder(id).catch(() => undefined);
   }, []);
 
   const get = useCallback((id: string) => read().find(i => i.id === id), []);
