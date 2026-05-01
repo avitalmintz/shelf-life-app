@@ -1,33 +1,32 @@
 # Screenshot Shelf
 
-Screenshot Shelf is a mobile-first app for saving screenshots before they disappear into the camera roll. Share a screenshot into the app, let AI sort it into the right shelf, and come back to it when it matters.
+> Save screenshots before they disappear into your camera roll.
 
-The app is built as a React PWA and wrapped with Capacitor for iOS. It stores data locally on the device and includes an iOS Share Extension so screenshots can be sent to the app from the native share sheet.
+Screenshot Shelf is a mobile-first app for organizing screenshots. Share one from iOS, let AI sort it onto the right shelf, and actually find it again when it matters — instead of losing it in a 12,000-photo scroll.
 
-## What It Does
+The app is a React PWA wrapped with Capacitor for iOS. Data lives locally on the device, and a native iOS Share Extension lets you send screenshots in straight from the system share sheet.
 
-- Imports screenshots from the iOS share sheet
-- Queues shared screenshots until the main app opens
-- Saves screenshots immediately, then categorizes them in the background
-- Uses AI to generate a title, category, notes, and visible link when available
-- Supports custom categories with user-written AI guidance
-- Lets users enable or disable built-in categories
-- Stores higher-quality images in IndexedDB with smaller localStorage fallbacks
-- Supports reminder date and time with native iOS notifications
-- Includes search, resurfacing, status tracking, export, and clear-all tools
+## What it does
 
-## Tech Stack
+- **Imports from the iOS share sheet** via a native Share Extension
+- **Queues** shared screenshots until the main app is open
+- **Saves first, categorizes later** — never blocks on AI
+- **AI-generated titles, categories, notes, and visible links** (via the Anthropic API)
+- **Custom categories** with user-written AI guidance, plus toggleable built-in ones
+- **Reminders** with native iOS notifications (date and time)
+- **Local-first storage** — full-quality images in IndexedDB with smaller localStorage fallbacks
+- **Search, resurface, status tracking, export, and clear-all** tools
 
-- React 18, TypeScript, Vite
-- Tailwind CSS, shadcn/ui, Radix UI
-- React Router
-- TanStack Query
-- Capacitor 8 for iOS
-- Swift Share Extension and Capacitor plugins
-- Anthropic SDK for AI screenshot categorization
-- Vitest and Testing Library
+## Tech stack
 
-## Project Structure
+- **Web** — React 18, TypeScript, Vite
+- **UI** — Tailwind CSS, shadcn/ui, Radix UI
+- **State / routing** — React Router, TanStack Query
+- **Mobile** — Capacitor 8 (iOS), Swift Share Extension
+- **AI** — Anthropic SDK
+- **Tests** — Vitest, Testing Library
+
+## Project layout
 
 ```text
 src/
@@ -40,31 +39,17 @@ ios/
   App/ShareExt/    iOS Share Extension
 ```
 
-## Local Development
-
-Install dependencies:
+## Local development
 
 ```bash
-npm install
+npm install        # install deps
+npm run dev        # start the web app
+npm run build      # production build
+npm run lint       # ESLint
+npm test -- --run  # run tests once
 ```
 
-Run the web app:
-
-```bash
-npm run dev
-```
-
-Run checks:
-
-```bash
-npm run build
-npm run lint
-npm test -- --run
-```
-
-## iOS Development
-
-Build and sync the web app into the native project:
+## iOS build
 
 ```bash
 npm run build
@@ -75,18 +60,18 @@ npx cap open ios
 In Xcode:
 
 - Select your iPhone as the run target
-- Set your Apple developer team under Signing & Capabilities
-- Make sure the App and ShareExt targets use the same App Group
-- Press `Cmd + R` to install
+- Set your Apple developer team under **Signing & Capabilities**
+- Make sure the App and ShareExt targets share the same App Group
+- Press `⌘R` to install
 
 ## Configuration
 
-AI categorization uses an Anthropic API key stored locally on the device. Add it inside the app from Profile -> AI categorization.
+AI categorization uses an **Anthropic API key** that lives only on the device. Add it from **Profile → AI categorization** inside the app.
 
-The app does not currently include cloud sync. Saved items, custom categories, image storage, and API keys are local to the device/browser.
+There is no cloud sync. Saved items, custom categories, image storage, and the API key are all local to the device or browser.
 
 ## Notes
 
-- iOS may block a Share Extension from automatically opening the main app. When that happens, Screenshot Shelf posts a local notification; tapping it opens the app and imports the queued screenshots.
-- Existing screenshots that were saved before the higher-quality image store was added cannot be restored to a sharper version. New imports use the improved storage path.
-- Generated build artifacts such as `dist`, `ios/DerivedData`, Xcode user data, and Capacitor copied web assets are intentionally ignored.
+- iOS sometimes blocks a Share Extension from auto-opening the host app. When that happens, Screenshot Shelf posts a local notification — tap it to open the app and import the queued screenshots.
+- Screenshots saved before the higher-quality image store was added cannot be upgraded retroactively. New imports use the improved storage path.
+- Generated build artifacts (`dist`, `ios/DerivedData`, Xcode user data, copied Capacitor web assets) are intentionally gitignored.
