@@ -1,27 +1,18 @@
 # Screenshot Shelf
 
-Screenshot Shelf is a mobile app for organizing screenshots. You take a screenshot on your iPhone, open the iOS share sheet, and send it to Screenshot Shelf. The app saves the image locally and uses the Anthropic API to fill in a title, a category, notes, and any visible link in the image. Later you can search, filter by category, or set a reminder.
+Screenshot Shelf is a mobile app that organizes your iPhone screenshots by content. You share a screenshot into the app from any other app, and the AI sorts it onto the right shelf based on what is in the image. From there you can search, filter, add your own categories, or set a reminder for later.
 
-The app is a React PWA wrapped with Capacitor for iOS. It includes a native iOS Share Extension so screenshots can come in from any app via the system share sheet. All data is stored on the device. There is no server and no cloud sync.
+The app is a React PWA wrapped with Capacitor for iOS. It includes a native iOS Share Extension so screenshots can come in from any app via the system share sheet. Everything (images, categories, API key) stays on your device. There is no server and no cloud sync.
 
 ## What it does
 
-1. You share a screenshot from another iOS app into Screenshot Shelf via the share sheet.
-2. The Share Extension queues the image so it is not lost if the main app is not open yet.
-3. When the main app opens, it imports the queued image and saves it immediately.
-4. In the background, the app sends the image to the Anthropic API. The model returns:
-   - a short title
-   - a category from the active list (built-in or custom)
-   - notes summarizing what the screenshot is about
-   - any URL or link visible in the image
-5. The image and its metadata are stored locally. Full-quality images go in IndexedDB. Smaller fallback copies go in localStorage.
-6. From the app you can browse your shelf, search, filter by category, set a date and time reminder (which fires as a native iOS notification), export, or clear all.
-
-## Categories
-
-- The app ships with a set of built-in categories, each of which can be turned on or off.
-- You can add custom categories. For each custom category you write a short prompt that tells the AI when to assign that category.
-- The AI categorization step picks from whatever categories are currently active.
+- **Semantic sorting.** When you save a screenshot, the AI reads what is in the image (a recipe, a flight confirmation, a tweet, a meme, a settings page) and files it on the right shelf for you.
+- **Auto-filled details.** Each screenshot gets a short title, notes describing what it shows, and any URL or link the model can read off the image.
+- **Categories you control.** Built-in categories can be toggled on or off. You can add your own categories by writing a short prompt that tells the AI when to use them.
+- **Filter and search.** Browse a single shelf, or search across everything by title or notes.
+- **Reminders.** Set a date and time on any screenshot. iOS fires a native notification when it is due.
+- **Send from anywhere.** A native iOS Share Extension lets any app that supports the iOS share sheet send a screenshot straight into Screenshot Shelf.
+- **Resurfacing, status tracking, export, and clear-all** for revisiting old screenshots, marking them handled, exporting a backup, or wiping everything at once.
 
 ## Tech stack
 
@@ -79,5 +70,4 @@ There is no cloud sync. Saved items, custom categories, image storage, and the A
 ## Notes
 
 - iOS sometimes blocks a Share Extension from automatically opening the host app. When that happens, Screenshot Shelf posts a local notification. Tapping it opens the app and imports any queued screenshots.
-- Screenshots saved before the higher-quality image store was added cannot be upgraded retroactively. New imports use the improved storage path.
 - Generated build artifacts (dist, ios/DerivedData, Xcode user data, copied Capacitor web assets) are intentionally gitignored.
