@@ -1,12 +1,4 @@
-export type Category =
-  | "place"
-  | "watch"
-  | "read"
-  | "style"
-  | "product"
-  | "recipe"
-  | "idea"
-  | "other";
+export type Category = string;
 
 export type Priority = "low" | "medium" | "high";
 
@@ -15,27 +7,37 @@ export type Status = "saved" | "considering" | "done" | "not_interested";
 export interface ShelfItem {
   id: string;
   image: string;            // data URL
+  imageStorageKey?: string;
   title: string;
   category: Category;
   notes?: string;
   link?: string;
   priority: Priority;
   status: Status;
+  aiStatus?: "pending" | "done" | "error";
   reminderDate?: string;    // ISO
   createdAt: string;        // ISO
   updatedAt: string;        // ISO
   lastResurfacedAt?: string;
 }
 
-export const CATEGORIES: { value: Category; label: string; emoji: string; tw: string }[] = [
-  { value: "place",   label: "Place to go",         emoji: "📍", tw: "bg-cat-place text-cat-place-foreground" },
-  { value: "watch",   label: "TV / Movie",          emoji: "🎬", tw: "bg-cat-watch text-cat-watch-foreground" },
-  { value: "read",    label: "Book / Article",      emoji: "📖", tw: "bg-cat-read text-cat-read-foreground" },
-  { value: "style",   label: "Clothing / Style",    emoji: "👗", tw: "bg-cat-style text-cat-style-foreground" },
-  { value: "product", label: "Product I want",      emoji: "🛍️", tw: "bg-cat-product text-cat-product-foreground" },
-  { value: "recipe",  label: "Recipe / Food",       emoji: "🍳", tw: "bg-cat-recipe text-cat-recipe-foreground" },
-  { value: "idea",    label: "Idea / Inspiration",  emoji: "💡", tw: "bg-cat-idea text-cat-idea-foreground" },
-  { value: "other",   label: "Other",               emoji: "✨", tw: "bg-cat-other text-cat-other-foreground" },
+export interface CategoryDefinition {
+  value: Category;
+  label: string;
+  tw: string;
+  context?: string;
+  custom?: boolean;
+}
+
+export const CATEGORIES: CategoryDefinition[] = [
+  { value: "place",   label: "Places to go",       tw: "bg-cat-place text-cat-place-foreground" },
+  { value: "watch",   label: "TV / Movie",         tw: "bg-cat-watch text-cat-watch-foreground" },
+  { value: "read",    label: "Book / Article",     tw: "bg-cat-read text-cat-read-foreground" },
+  { value: "style",   label: "Clothing / Style",   tw: "bg-cat-style text-cat-style-foreground" },
+  { value: "product", label: "Products to buy",    tw: "bg-cat-product text-cat-product-foreground" },
+  { value: "recipe",  label: "Recipe / Food",      tw: "bg-cat-recipe text-cat-recipe-foreground" },
+  { value: "idea",    label: "Idea / Inspiration", tw: "bg-cat-idea text-cat-idea-foreground" },
+  { value: "other",   label: "Other",              tw: "bg-cat-other text-cat-other-foreground" },
 ];
 
 export const PRIORITIES: { value: Priority; label: string; tw: string }[] = [
@@ -51,6 +53,7 @@ export const STATUSES: { value: Status; label: string }[] = [
   { value: "not_interested", label: "Not interested" },
 ];
 
-export const categoryMeta = (c: Category) => CATEGORIES.find(x => x.value === c)!;
+export const categoryMeta = (c: Category) =>
+  CATEGORIES.find(x => x.value === c) ?? CATEGORIES.find(x => x.value === "other")!;
 export const priorityMeta = (p: Priority) => PRIORITIES.find(x => x.value === p)!;
 export const statusMeta   = (s: Status)   => STATUSES.find(x => x.value === s)!;
