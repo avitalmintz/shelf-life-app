@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useShelf } from "@/lib/storage";
-import { categoryMeta, ShelfItem } from "@/lib/types";
+import { ShelfItem } from "@/lib/types";
+import { categoryMeta } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Heart, Check, X, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import StoredImage from "@/components/StoredImage";
 
 const PROMPTS: Record<string, (i: ShelfItem) => string> = {
   watch:   i => `Want to watch this tonight?`,
@@ -25,8 +27,7 @@ function pickResurfaceItems(items: ShelfItem[]): ShelfItem[] {
   const scored = eligible.map(i => {
     const ageDays = (now - new Date(i.createdAt).getTime()) / 86400000;
     const lastSeen = i.lastResurfacedAt ? (now - new Date(i.lastResurfacedAt).getTime()) / 86400000 : 999;
-    const prio = i.priority === "high" ? 3 : i.priority === "medium" ? 1.5 : 1;
-    return { i, score: ageDays * prio + lastSeen * 2 + Math.random() * 5 };
+    return { i, score: ageDays + lastSeen * 2 + Math.random() * 5 };
   });
   return scored.sort((a, b) => b.score - a.score).slice(0, 5).map(s => s.i);
 }
@@ -51,7 +52,7 @@ export default function Resurface() {
     update(current.id, patch);
     toast.success(
       action === "interested" ? "Kept on your shelf" :
-      action === "done"        ? "Marked as done 🎉" :
+      action === "done"        ? "Marked as done" :
       action === "not"         ? "Removed from rotation" :
                                  "We'll bring it back later"
     );
@@ -73,7 +74,9 @@ export default function Resurface() {
   if (!current) {
     return (
       <div className="px-6 pt-20 text-center">
-        <div className="text-5xl mb-4">🎉</div>
+        <div className="h-20 w-20 mx-auto rounded-3xl bg-gradient-warm flex items-center justify-center mb-5">
+          <Check className="h-9 w-9 text-primary-foreground" />
+        </div>
         <h1 className="font-display text-2xl font-semibold mb-2">All caught up</h1>
         <p className="text-muted-foreground mb-6">You've reviewed everything for now. Come back tomorrow.</p>
         <Button onClick={() => nav("/")} className="rounded-full">Back home</Button>
@@ -99,9 +102,9 @@ export default function Resurface() {
 
       <div className="shelf-card animate-pop-in">
         <div className="relative">
-          <img src={current.image} alt={current.title} className="w-full h-auto" />
+          <StoredImage item={current} className="w-full h-auto" />
           <span className={cn("chip absolute top-3 left-3 shadow-card", cat.tw)}>
-            <span>{cat.emoji}</span><span>{cat.label}</span>
+            {cat.label}
           </span>
         </div>
         <div className="p-4">
