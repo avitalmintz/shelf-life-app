@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useShelf, timeAgo } from "@/lib/storage";
-import { CATEGORIES, Category, PRIORITIES, Priority, STATUSES, Status, ShelfItem, categoryMeta, priorityMeta, statusMeta } from "@/lib/types";
+import { Category, STATUSES, Status, ShelfItem, statusMeta } from "@/lib/types";
+import { categoryMeta, useCategories } from "@/lib/categories";
 import { ArrowLeft, Trash2, ExternalLink, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,16 +10,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import StoredImage from "@/components/StoredImage";
+
+function toDateTimeLocal(iso?: string): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocal(value: string): string | undefined {
+  if (!value) return undefined;
+  return new Date(value).toISOString();
+}
 
 export default function ItemDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { get, update, remove } = useShelf();
+  const { items, get, update, remove } = useShelf();
+  const categories = useCategories();
   const [item, setItem] = useState<ShelfItem | undefined>(undefined);
 
   useEffect(() => {
     if (id) setItem(get(id));
-  }, [id, get]);
+  }, [id, get, items]);
 
   if (!item) {
     return (
@@ -39,7 +55,7 @@ export default function ItemDetail() {
   return (
     <div className="pb-6">
       <div className="relative">
-        <img src={item.image} alt={item.title} className="w-full h-auto" />
+        <StoredImage item={item} className="w-full h-auto" />
         <button
           onClick={() => nav(-1)}
           className="absolute top-3 left-3 h-10 w-10 rounded-full bg-card/90 backdrop-blur shadow-card flex items-center justify-center"
@@ -54,7 +70,7 @@ export default function ItemDetail() {
           <Trash2 className="h-5 w-5" />
         </button>
         <span className={cn("chip absolute bottom-3 left-3 shadow-card", cat.tw)}>
-          <span>{cat.emoji}</span><span>{cat.label}</span>
+          {cat.label}
         </span>
       </div>
 
@@ -103,7 +119,7 @@ export default function ItemDetail() {
         <div>
           <Label>Category</Label>
           <div className="grid grid-cols-2 gap-2 mt-1.5">
-            {CATEGORIES.map(c => {
+            {categories.map(c => {
               const active = item.category === c.value;
               return (
                 <button
@@ -114,27 +130,8 @@ export default function ItemDetail() {
                     active ? cn(c.tw, "border-transparent ring-2 ring-primary") : "bg-card border-border"
                   )}
                 >
-                  <span className="text-base mr-1.5">{c.emoji}</span>{c.label}
+                  {c.label}
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div>
-          <Label>Priority</Label>
-          <div className="grid grid-cols-3 gap-2 mt-1.5">
-            {PRIORITIES.map(p => {
-              const active = item.priority === p.value;
-              return (
-                <button
-                  key={p.value}
-                  onClick={() => patch({ priority: p.value as Priority })}
-                  className={cn(
-                    "rounded-xl py-2 text-sm font-medium border transition",
-                    active ? cn(p.tw, "border-transparent ring-2 ring-primary") : "bg-card border-border"
-                  )}
-                >{p.label}</button>
               );
             })}
           </div>
@@ -160,19 +157,22 @@ export default function ItemDetail() {
         </div>
 
         <div>
-          <Label htmlFor="rem">Reminder date</Label>
+          <Label htmlFor="rem">Reminder date and time</Label>
           <Input
             id="rem"
-            type="date"
-            value={item.reminderDate?.slice(0, 10) ?? ""}
-            onChange={e => patch({ reminderDate: e.target.value || undefined })}
+            type="datetime-local"
+            value={toDateTimeLocal(item.reminderDate)}
+            onChange={e => {
+              patch({ reminderDate: fromDateTimeLocal(e.target.value) });
+              toast.success(e.target.value ? "Reminder scheduled" : "Reminder cleared");
+            }}
             className="mt-1.5"
           />
         </div>
 
         {item.status !== "done" && (
           <Button
-            onClick={() => { patch({ status: "done" }); toast.success("Marked as done 🎉"); }}
+            onClick={() => { patch({ status: "done" }); toast.success("Marked as done"); }}
             className="w-full h-12 rounded-full text-base font-semibold shadow-pop"
           >
             <Check className="h-5 w-5 mr-1" /> Mark as done
@@ -180,7 +180,7 @@ export default function ItemDetail() {
         )}
         {item.status === "done" && (
           <p className="text-center text-sm text-muted-foreground">
-            Completed — nice work ✨ ({statusMeta(item.status).label})
+            Completed — nice work ({statusMeta(item.status).label})
           </p>
         )}
       </div>
