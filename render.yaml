@@ -14,3 +14,5 @@ services:
         value: claude-opus-4-7
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: BRAVE_SEARCH_API_KEY
+        sync: false

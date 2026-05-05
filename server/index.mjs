@@ -86,7 +86,9 @@ app.post("/api/analyze-screenshot", async (req, res) => {
     const textBlock = response.content.find(block => block.type === "text");
     if (!textBlock) throw new Error("Claude did not return text.");
     const parsed = parseJSON(textBlock.text);
-    res.json(normalizeResult(parsed));
+    const normalized = normalizeResult(parsed);
+    const searched = await enrichWithSearch(normalized);
+    res.json(searched);
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -151,6 +153,80 @@ function normalizeResult(value) {
     searchQuery,
     candidates,
   };
+}
+
+async function enrichWithSearch(result) {
+  if (!process.env.BRAVE_SEARCH_API_KEY || !result.searchQuery) {
+    return result;
+  }
+
+  try {
+    const results = await braveSearch(result.searchQuery);
+    if (results.length === 0) return result;
+
+    const existing = new Set(result.candidates.map(candidate => candidate.url).filter(Boolean));
+    const searchCandidates = results
+      .filter(candidate => !existing.has(candidate.url))
+      .slice(0, 5)
+      .map(candidate => ({
+        ...candidate,
+        confidence: candidate.confidence,
+        reason: `Search result for "${result.searchQuery}"`,
+        searchQuery: result.searchQuery,
+      }));
+
+    const candidates = [...searchCandidates, ...result.candidates].slice(0, 5);
+    const top = candidates.find(candidate => candidate.url && (candidate.confidence ?? 0) >= 0.82);
+
+    return {
+      ...result,
+      link: result.link || top?.url || "",
+      candidates,
+    };
+  } catch (error) {
+    console.error("Search enrichment failed", error);
+    return result;
+  }
+}
+
+async function braveSearch(query) {
+  const url = new URL("https://api.search.brave.com/res/v1/web/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("count", "5");
+  url.searchParams.set("country", "us");
+  url.searchParams.set("search_lang", "en");
+  url.searchParams.set("safesearch", "moderate");
+  url.searchParams.set("spellcheck", "1");
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      "X-Subscription-Token": process.env.BRAVE_SEARCH_API_KEY,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Brave Search error ${response.status}: ${await response.text()}`);
+  }
+
+  const body = await response.json();
+  const webResults = Array.isArray(body?.web?.results) ? body.web.results : [];
+  return webResults
+    .map((result, index) => ({
+      title: stringOrEmpty(result.title),
+      url: sanitizeURL(stringOrEmpty(result.url)),
+      source: stringOrEmpty(result.profile?.name) || hostname(stringOrEmpty(result.url)),
+      confidence: Math.max(0.55, 0.92 - index * 0.08),
+      reason: stringOrEmpty(result.description),
+    }))
+    .filter(result => result.url);
+}
+
+function hostname(value) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 function sanitizeURL(value) {
