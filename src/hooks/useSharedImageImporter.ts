@@ -3,8 +3,10 @@ import { toast } from "sonner";
 import { compactStoredImages, useShelf } from "@/lib/storage";
 import { getPendingSharedImages, clearSharedImages } from "@/lib/sharedImages";
 import { categorizeScreenshot, isAIConfigured } from "@/lib/aiCategorize";
+import { getCategories } from "@/lib/categories";
 import { compressDataUrlForStorage } from "@/lib/imageCompression";
 import { getStoredImage, storeImage } from "@/lib/imageStore";
+import { findScreenshotSource } from "@/lib/sourceFinder";
 
 export function useSharedImageImporter() {
   const { add, update, items } = useShelf();
@@ -17,22 +19,47 @@ export function useSharedImageImporter() {
     for (const item of items) {
       if (item.aiStatus !== "pending" || categorizingRef.current.has(item.id)) continue;
       categorizingRef.current.add(item.id);
-      void getStoredImage(item.imageStorageKey)
-        .then(image => categorizeScreenshot(image ?? item.image, { sourceURL: item.link, note: item.notes }))
-        .then(result => {
-          update(item.id, {
-            title: result.title,
-            notes: [result.notes, item.notes].filter(Boolean).join("\n\n") || undefined,
-            link: result.link || item.link,
-            category: result.category,
-            sourceCandidates: result.sourceCandidates,
-            sourceConfidence: result.sourceConfidence,
-            sourceSearchQuery: result.sourceSearchQuery,
-            aiStatus: "done",
-          });
-        })
+      void (async () => {
+        const image = await getStoredImage(item.imageStorageKey);
+        const imageDataUrl = image ?? item.image;
+        const result = await categorizeScreenshot(imageDataUrl, { sourceURL: item.link, note: item.notes });
+        const notes = [result.notes, item.notes].filter(Boolean).join("\n\n") || undefined;
+        const link = result.link || item.link;
+        update(item.id, {
+          title: result.title,
+          notes,
+          link,
+          category: result.category,
+          sourceCandidates: result.sourceCandidates,
+          sourceConfidence: result.sourceConfidence,
+          sourceSearchQuery: result.sourceSearchQuery,
+          aiStatus: link ? "done" : "finding_source",
+        });
+
+        if (!link) {
+          try {
+            const source = await findScreenshotSource({
+              imageDataUrl,
+              note: notes,
+              categories: getCategories(),
+              mode: "source",
+            });
+            update(item.id, {
+              link: source.link || undefined,
+              sourceCandidates: source.candidates,
+              sourceConfidence: source.confidence,
+              sourceSearchQuery: source.searchQuery,
+              aiStatus: "done",
+            });
+          } catch {
+            update(item.id, { aiStatus: "done" });
+          }
+        }
+      })()
         .catch(() => {
-          update(item.id, { aiStatus: "error" });
+          update(item.id, {
+            aiStatus: "error",
+          });
         })
         .finally(() => {
           categorizingRef.current.delete(item.id);
@@ -62,7 +89,7 @@ export function useSharedImageImporter() {
         for (const img of pending) {
           try {
             const imageStorageKey = `shared-${crypto.randomUUID()}`;
-            const displayImage = await compressDataUrlForStorage(img.dataUrl, 1_200_000);
+            const displayImage = await compressDataUrlForStorage(img.dataUrl, 2_500_000);
             await storeImage(imageStorageKey, displayImage);
             const thumbnailImage = await compressDataUrlForStorage(img.dataUrl, 160_000);
             const baseItem = {
@@ -102,7 +129,7 @@ export function useSharedImageImporter() {
         toast.dismiss(toastId);
         if (processed.length > 0 && errors.length === 0) {
           toast.success(`Saved ${processed.length} from share`, {
-            description: hasAI ? "Fast categorizing in the background. Use Find source for deeper links." : "Saved without AI categorization.",
+            description: hasAI ? "Categorizing first, then finding links." : "Saved without AI categorization.",
           });
         } else if (processed.length > 0 && errors.length > 0) {
           toast.warning(`Imported ${processed.length}, ${errors.length} failed`, {
@@ -149,7 +176,7 @@ export function useManualSharedImport() {
     for (const img of pending) {
       try {
         const imageStorageKey = `manual-shared-${crypto.randomUUID()}`;
-        const displayImage = await compressDataUrlForStorage(img.dataUrl, 1_200_000);
+        const displayImage = await compressDataUrlForStorage(img.dataUrl, 2_500_000);
         await storeImage(imageStorageKey, displayImage);
         const thumbnailImage = await compressDataUrlForStorage(img.dataUrl, 160_000);
         add({

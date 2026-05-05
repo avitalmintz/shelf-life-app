@@ -21,7 +21,7 @@ export default function AddItem() {
     setError(null);
     try {
       const imageStorageKey = `upload-${crypto.randomUUID()}`;
-      const displayImage = await compressDataUrlForStorage(dataUrl, 1_200_000);
+      const displayImage = await compressDataUrlForStorage(dataUrl, 2_500_000);
       await storeImage(imageStorageKey, displayImage);
       const storageImage = await compressDataUrlForStorage(dataUrl, 160_000);
       const hasAI = isAIConfigured();
