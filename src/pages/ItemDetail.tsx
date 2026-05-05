@@ -157,12 +157,19 @@ export default function ItemDetail() {
             {findingSource ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Find source
           </Button>
-          {item.sourceCandidates && item.sourceCandidates.length > 0 && (
+          {((item.sourceCandidates && item.sourceCandidates.length > 0) || item.sourceSearchQuery) && (
             <div className="mt-3 space-y-2">
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Possible matches
               </p>
-              {item.sourceCandidates.map((candidate, index) => {
+              {(item.sourceCandidates?.length
+                ? item.sourceCandidates
+                : [{
+                    title: "Search for this source",
+                    searchQuery: item.sourceSearchQuery,
+                    reason: "No exact URL was verified, but this search query uses the screenshot details.",
+                  }]
+              ).map((candidate, index) => {
                 const searchQuery = candidate.searchQuery || item.sourceSearchQuery || [candidate.title, candidate.source].filter(Boolean).join(" ");
                 const href = candidate.url || (searchQuery ? `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}` : undefined);
                 const content = (
