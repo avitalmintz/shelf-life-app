@@ -117,6 +117,7 @@ function parseDataUrl(dataUrl) {
 }
 
 function normalizeResult(value) {
+  const searchQuery = stringOrEmpty(value?.searchQuery);
   const candidates = Array.isArray(value?.candidates)
     ? value.candidates.slice(0, 5).map(candidate => ({
         title: stringOrEmpty(candidate.title),
@@ -127,6 +128,16 @@ function normalizeResult(value) {
         searchQuery: stringOrEmpty(candidate.searchQuery),
       })).filter(candidate => candidate.url || candidate.title || candidate.source || candidate.searchQuery)
     : [];
+  if (candidates.length === 0 && searchQuery) {
+    candidates.push({
+      title: "Search for this source",
+      url: "",
+      source: "",
+      confidence: numberBetween(value?.confidence, 0, 1),
+      reason: "No exact URL was verified, but this search query is based on the visible screenshot details.",
+      searchQuery,
+    });
+  }
 
   const link = sanitizeURL(stringOrEmpty(value?.link));
   const promoted = link || candidates.find(candidate => candidate.url && (candidate.confidence ?? 0) >= 0.88)?.url || "";
@@ -137,7 +148,7 @@ function normalizeResult(value) {
     notes: stringOrEmpty(value?.notes),
     link: promoted,
     confidence: numberBetween(value?.confidence, 0, 1),
-    searchQuery: stringOrEmpty(value?.searchQuery),
+    searchQuery,
     candidates,
   };
 }
