@@ -62,6 +62,7 @@ Set:
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
 BRAVE_SEARCH_API_KEY=...
+ANTHROPIC_MODEL=claude-sonnet-4-6
 VITE_SOURCE_API_URL=http://localhost:8787
 ```
 

@@ -15,7 +15,11 @@ app.get("/", (_req, res) => {
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({
+    ok: true,
+    model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
+    searchConfigured: Boolean(process.env.BRAVE_SEARCH_API_KEY),
+  });
 });
 
 app.post("/api/analyze-screenshot", async (req, res) => {
@@ -41,7 +45,7 @@ app.post("/api/analyze-screenshot", async (req, res) => {
 
     const image = parseDataUrl(imageDataUrl);
     const response = await anthropic.messages.create({
-      model: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-7",
+      model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
       max_tokens: 1200,
       system: [
         "You help a screenshot-saving app identify the source or best search strategy for screenshots.",
