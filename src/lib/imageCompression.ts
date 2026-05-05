@@ -14,7 +14,7 @@ export async function compressDataUrlForStorage(
   }
 
   const image = await loadImage(dataUrl);
-  let maxDim = Math.min(900, Math.max(image.naturalWidth, image.naturalHeight));
+  let maxDim = Math.min(maxStorageDimension(maxBytes), Math.max(image.naturalWidth, image.naturalHeight));
 
   while (maxDim >= 320) {
     const scale = Math.min(1, maxDim / Math.max(image.naturalWidth, image.naturalHeight));
@@ -39,11 +39,18 @@ export async function compressDataUrlForStorage(
   }
 
   const fallback = document.createElement("canvas");
-  const scale = Math.min(1, 520 / Math.max(image.naturalWidth, image.naturalHeight));
+  const scale = Math.min(1, Math.min(900, maxStorageDimension(maxBytes)) / Math.max(image.naturalWidth, image.naturalHeight));
   fallback.width = Math.max(1, Math.round(image.naturalWidth * scale));
   fallback.height = Math.max(1, Math.round(image.naturalHeight * scale));
   fallback.getContext("2d")?.drawImage(image, 0, 0, fallback.width, fallback.height);
   return fallback.toDataURL("image/jpeg", 0.32);
+}
+
+function maxStorageDimension(maxBytes: number): number {
+  if (maxBytes >= 2_000_000) return 2400;
+  if (maxBytes >= 1_000_000) return 1800;
+  if (maxBytes >= 250_000) return 1200;
+  return 900;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
