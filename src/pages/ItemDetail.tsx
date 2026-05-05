@@ -131,6 +131,12 @@ export default function ItemDetail() {
 
         <div>
           <Label htmlFor="link">Link</Label>
+          {item.aiStatus === "finding_source" && (
+            <div className="mt-2 rounded-xl border border-primary/20 bg-primary-soft/70 px-3 py-2 text-sm text-primary flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              <span>Finding the best source link...</span>
+            </div>
+          )}
           <div className="flex gap-2 mt-1.5">
             <Input
               id="link"
@@ -152,10 +158,10 @@ export default function ItemDetail() {
             variant="outline"
             className="mt-2 w-full rounded-full"
             onClick={findSource}
-            disabled={findingSource}
+            disabled={findingSource || item.aiStatus === "finding_source"}
           >
-            {findingSource ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            Find source
+            {(findingSource || item.aiStatus === "finding_source") ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {item.aiStatus === "finding_source" ? "Finding source..." : "Find source"}
           </Button>
           {((item.sourceCandidates && item.sourceCandidates.length > 0) || item.sourceSearchQuery) && (
             <div className="mt-3 space-y-2">
