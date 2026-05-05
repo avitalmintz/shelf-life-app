@@ -26,10 +26,11 @@ export interface ShelfItem {
 
 export interface SourceCandidate {
   title: string;
-  url: string;
+  url?: string;
   source?: string;
   confidence?: number;
   reason?: string;
+  searchQuery?: string;
 }
 
 export interface CategoryDefinition {

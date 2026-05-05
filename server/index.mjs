@@ -48,8 +48,9 @@ app.post("/api/analyze-screenshot", async (req, res) => {
         "Analyze visual details, visible text, brand names, products, article headlines, prices, dates, social handles, domains, places, and UI context.",
         "You do not have live web browsing in this endpoint. Do not pretend you verified a URL online.",
         "If an exact source URL is supplied by the app, use it as the link.",
-        "If no exact URL is supplied, create a highly specific searchQuery and candidates only when a full exact URL is visible in the screenshot.",
+        "If no exact URL is supplied, create a highly specific searchQuery and useful candidates based on visible evidence.",
         "Never invent a definitive product/article URL from only a brand or domain. Domains alone are not enough.",
+        "For candidates, include a url only when the exact full URL is supplied or clearly visible. Otherwise leave url empty but include title, source, reason, confidence, and searchQuery.",
         "Return only valid JSON matching the requested shape.",
         categoryLines ? `Available categories:\n${categoryLines}` : "",
       ].filter(Boolean).join("\n"),
@@ -64,8 +65,8 @@ app.post("/api/analyze-screenshot", async (req, res) => {
                 sourceURL ? `Known source URL from iOS share sheet: ${sourceURL}` : "No source URL was supplied by iOS.",
                 note ? `User note: ${note}` : "",
                 "Return JSON with: category, title, notes, link, confidence, searchQuery, candidates.",
-                "candidates must be an array of up to 5 objects: title, url, source, confidence, reason.",
-                "For candidates without a verified URL, leave url empty and put the likely title/source/reason plus the searchQuery.",
+                "candidates must be an array of up to 5 objects: title, url, source, confidence, reason, searchQuery.",
+                "For candidates without a verified URL, leave url empty and put the likely title/source/reason/searchQuery.",
                 "Use link only when it was supplied by iOS or a full exact URL is clearly visible in the image.",
               ].filter(Boolean).join("\n"),
             },
@@ -123,18 +124,32 @@ function normalizeResult(value) {
         source: stringOrEmpty(candidate.source),
         confidence: numberBetween(candidate.confidence, 0, 1),
         reason: stringOrEmpty(candidate.reason),
-      })).filter(candidate => candidate.url)
+        searchQuery: stringOrEmpty(candidate.searchQuery),
+      })).filter(candidate => candidate.url || candidate.title || candidate.source || candidate.searchQuery)
     : [];
+
+  const link = sanitizeURL(stringOrEmpty(value?.link));
+  const promoted = link || candidates.find(candidate => candidate.url && (candidate.confidence ?? 0) >= 0.88)?.url || "";
 
   return {
     category: stringOrEmpty(value?.category) || "other",
     title: stringOrEmpty(value?.title) || "Saved screenshot",
     notes: stringOrEmpty(value?.notes),
-    link: stringOrEmpty(value?.link),
+    link: promoted,
     confidence: numberBetween(value?.confidence, 0, 1),
     searchQuery: stringOrEmpty(value?.searchQuery),
     candidates,
   };
+}
+
+function sanitizeURL(value) {
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    return /^https?:$/.test(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
 }
 
 function stringOrEmpty(value) {
