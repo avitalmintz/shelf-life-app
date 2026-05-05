@@ -66,7 +66,10 @@ app.post("/api/analyze-screenshot", async (req, res) => {
         "If an exact source URL is supplied by the app, use it as the link.",
         fastMode
           ? "If no exact URL is supplied, leave link empty. Do not spend effort building source candidates."
-          : "If no exact URL is supplied, create a highly specific searchQuery and useful candidates based on visible evidence.",
+          : "If no exact URL is supplied, create a searchQuery only when the screenshot appears to be a public/sourceable article, product, social post, listing, restaurant, event, place, recipe, video, book, or brand page.",
+        fastMode
+          ? "Do not search for private or unsourceable screenshots."
+          : "If the screenshot is a text message, email, notes app, calendar, private chat, camera roll photo, personal document, receipt without a public item, random meme, or anything not meaningfully sourceable on the public web, set searchQuery to an empty string and candidates to an empty array.",
         "Never invent a definitive product/article URL from only a brand or domain. Domains alone are not enough.",
         fastMode
           ? "Return an empty candidates array unless a full exact URL is supplied or clearly visible."
@@ -92,6 +95,9 @@ app.post("/api/analyze-screenshot", async (req, res) => {
                 fastMode
                   ? ""
                   : "For candidates without a verified URL, leave url empty and put the likely title/source/reason/searchQuery.",
+                fastMode
+                  ? ""
+                  : "If there is no relevant public source link to find, return empty link, empty searchQuery, and empty candidates. Do not force a web search.",
                 "Use link only when it was supplied by iOS or a full exact URL is clearly visible in the image.",
               ].filter(Boolean).join("\n"),
             },
