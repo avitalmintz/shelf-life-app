@@ -42,6 +42,13 @@ app.post("/api/analyze-screenshot", async (req, res) => {
           .map(c => `- ${c.value}: ${c.label}${c.context ? ` (${c.context})` : ""}`)
           .join("\n")
       : "";
+    const categoryGuidance = [
+      "Category rules:",
+      "- style: clothing, outfits, shoes, bags, totes, purses, jewelry, accessories, fashion items, beauty/fashion styling.",
+      "- product: physical products to buy that are not wearable/style items, not bags/totes/purses, not jewelry, not shoes, and not fashion accessories.",
+      "- If an item is worn, carried as part of an outfit, or sold as a fashion accessory, choose style over product.",
+      "- If the screenshot is an article/post about a product or fashion item, choose read when the primary thing saved is the article text/headline.",
+    ].join("\n");
 
     const image = parseDataUrl(imageDataUrl);
     const response = await anthropic.messages.create({
@@ -55,6 +62,7 @@ app.post("/api/analyze-screenshot", async (req, res) => {
         "If no exact URL is supplied, create a highly specific searchQuery and useful candidates based on visible evidence.",
         "Never invent a definitive product/article URL from only a brand or domain. Domains alone are not enough.",
         "For candidates, include a url only when the exact full URL is supplied or clearly visible. Otherwise leave url empty but include title, source, reason, confidence, and searchQuery.",
+        categoryGuidance,
         "Return only valid JSON matching the requested shape.",
         categoryLines ? `Available categories:\n${categoryLines}` : "",
       ].filter(Boolean).join("\n"),
