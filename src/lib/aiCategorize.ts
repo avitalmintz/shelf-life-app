@@ -33,6 +33,7 @@ export async function categorizeScreenshot(dataUrl: string, context: CategorizeC
     sourceURL: context.sourceURL,
     note: context.note,
     categories: getCategories(),
+    mode: "fast",
   });
 
   return {

@@ -102,7 +102,7 @@ export function useSharedImageImporter() {
         toast.dismiss(toastId);
         if (processed.length > 0 && errors.length === 0) {
           toast.success(`Saved ${processed.length} from share`, {
-            description: hasAI ? "Categorizing and finding sources in the background." : "Saved without AI categorization.",
+            description: hasAI ? "Fast categorizing in the background. Use Find source for deeper links." : "Saved without AI categorization.",
           });
         } else if (processed.length > 0 && errors.length > 0) {
           toast.warning(`Imported ${processed.length}, ${errors.length} failed`, {
