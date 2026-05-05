@@ -61,6 +61,7 @@ Set:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
+BRAVE_SEARCH_API_KEY=...
 VITE_SOURCE_API_URL=http://localhost:8787
 ```
 
@@ -78,7 +79,7 @@ VITE_SOURCE_API_URL=https://your-backend-url
 
 ## Backend deployment
 
-This repo includes `render.yaml` for Render. Create a Render web service from the GitHub repo, set `ANTHROPIC_API_KEY` in Render environment variables, and use the generated `https://...onrender.com` URL as `VITE_SOURCE_API_URL` before building the iOS archive.
+This repo includes `render.yaml` for Render. Create a Render web service from the GitHub repo, set `ANTHROPIC_API_KEY` and `BRAVE_SEARCH_API_KEY` in Render environment variables, and use the generated `https://...onrender.com` URL as `VITE_SOURCE_API_URL` before building the iOS archive.
 
 ## iOS build
 
