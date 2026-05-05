@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { requestOnboarding } from "@/lib/onboarding";
 
 export default function Profile() {
   const { items, update } = useShelf();
@@ -162,6 +163,7 @@ export default function Profile() {
 
       <section className="space-y-2">
         <h2 className="section-title">Data</h2>
+        <Button variant="outline" className="w-full rounded-full" onClick={requestOnboarding}>How to use Screenshot Shelf</Button>
         <Button variant="outline" className="w-full rounded-full" onClick={exportData}>Export as JSON</Button>
         <Button variant="ghost" className="w-full rounded-full text-destructive hover:text-destructive" onClick={wipe}>
           Clear all items

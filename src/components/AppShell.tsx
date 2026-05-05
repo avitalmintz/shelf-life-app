@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import BottomNav from "./BottomNav";
 import { useSharedImageImporter } from "@/hooks/useSharedImageImporter";
+import OnboardingDialog from "./OnboardingDialog";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   useSharedImageImporter();
@@ -10,6 +11,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       <BottomNav />
+      <OnboardingDialog />
     </div>
   );
 }
