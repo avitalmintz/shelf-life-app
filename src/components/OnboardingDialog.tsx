@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, Check, Share2, Sparkles } from "lucide-react";
+import { Bell, Check, FolderPlus, Link, Share2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,7 +35,7 @@ export default function OnboardingDialog() {
               How Screenshot Shelf works
             </DialogTitle>
             <DialogDescription>
-              Save screenshots from anywhere, then let the app import and organize them when you open it.
+              Save screenshots from anywhere, then let the app import, categorize, and find useful links when you open it.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -44,17 +44,27 @@ export default function OnboardingDialog() {
           <Step
             icon={<Share2 className="h-5 w-5" />}
             title="Add it to your share sheet"
-            text="When you share a screenshot, tap More or Edit Actions if needed, then choose Screenshot Shelf. After you tap Post, the screenshot is queued for the app."
+            text="On your iPhone, tap the share button on a screenshot. If Screenshot Shelf is not in the app row, scroll to the end, tap More, and add it. Then choose Screenshot Shelf and tap Post."
           />
           <Step
             icon={<Bell className="h-5 w-5" />}
             title="Allow notifications"
-            text="iOS may show a notification instead of opening the app automatically. Tap that notification to open Screenshot Shelf and finish importing."
+            text="iOS may show a notification instead of opening the app automatically. Tap it once to open Screenshot Shelf and start importing."
           />
           <Step
             icon={<Sparkles className="h-5 w-5" />}
-            title="Batch screenshots are okay"
-            text="You can share several screenshots first. When you open the app later, it imports the queued screenshots and categorizes them."
+            title="You do not need to wait"
+            text="iPhone does not let this work continue fully in the background. Share one screenshot or a bunch, then visit the app once. After import starts, you can leave; categorizing finishes next time the app gets time."
+          />
+          <Step
+            icon={<FolderPlus className="h-5 w-5" />}
+            title="Customize your shelves"
+            text='In Profile, turn default categories on or off or add your own, like "Compliments," with guidance for what screenshots belong there.'
+          />
+          <Step
+            icon={<Link className="h-5 w-5" />}
+            title="Links are best guesses"
+            text="If iOS gives us the original link, the app saves it. Otherwise the backend reads the screenshot and searches for likely source links you can check."
           />
           <Step
             icon={<Check className="h-5 w-5" />}
