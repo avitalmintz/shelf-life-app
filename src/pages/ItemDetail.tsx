@@ -162,21 +162,47 @@ export default function ItemDetail() {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Possible matches
               </p>
-              {item.sourceCandidates.map(candidate => (
-                <a
-                  key={candidate.url}
-                  href={candidate.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-xl border border-border bg-card p-3 text-sm"
-                >
-                  <div className="font-medium leading-snug">{candidate.title || candidate.url}</div>
-                  <div className="mt-1 text-xs text-muted-foreground line-clamp-1">{candidate.source || candidate.url}</div>
-                  {candidate.reason && (
-                    <div className="mt-1 text-xs text-muted-foreground">{candidate.reason}</div>
-                  )}
-                </a>
-              ))}
+              {item.sourceCandidates.map((candidate, index) => {
+                const searchQuery = candidate.searchQuery || item.sourceSearchQuery || [candidate.title, candidate.source].filter(Boolean).join(" ");
+                const href = candidate.url || (searchQuery ? `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}` : undefined);
+                const content = (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="font-medium leading-snug">{candidate.title || candidate.source || searchQuery || "Possible match"}</div>
+                      {candidate.confidence !== undefined && candidate.confidence > 0 && (
+                        <span className="text-[11px] text-muted-foreground shrink-0">
+                          {Math.round(candidate.confidence * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground line-clamp-1">
+                      {candidate.url || candidate.source || searchQuery}
+                    </div>
+                    {candidate.reason && (
+                      <div className="mt-1 text-xs text-muted-foreground">{candidate.reason}</div>
+                    )}
+                  </>
+                );
+
+                return href ? (
+                  <a
+                    key={candidate.url || `${candidate.title}-${index}`}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block rounded-xl border border-border bg-card p-3 text-sm"
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <div
+                    key={`${candidate.title}-${index}`}
+                    className="rounded-xl border border-border bg-card p-3 text-sm"
+                  >
+                    {content}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
