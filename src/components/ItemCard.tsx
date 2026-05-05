@@ -35,6 +35,9 @@ export default function ItemCard({ item, compact = false }: { item: ShelfItem; c
         {item.aiStatus === "finding_source" && (
           <p className="text-xs text-muted-foreground mt-1">Finding link...</p>
         )}
+        {item.aiStatus === "no_source" && (
+          <p className="text-xs text-muted-foreground mt-1">No public link found</p>
+        )}
         {!compact && item.notes && (
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.notes}</p>
         )}

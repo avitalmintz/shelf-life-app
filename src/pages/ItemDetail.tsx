@@ -137,6 +137,11 @@ export default function ItemDetail() {
               <span>Finding the best source link...</span>
             </div>
           )}
+          {item.aiStatus === "no_source" && !item.link && (
+            <div className="mt-2 rounded-xl border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+              No public source link found for this screenshot.
+            </div>
+          )}
           <div className="flex gap-2 mt-1.5">
             <Input
               id="link"

@@ -17,7 +17,7 @@ export interface ShelfItem {
   sourceSearchQuery?: string;
   priority: Priority;
   status: Status;
-  aiStatus?: "pending" | "finding_source" | "done" | "error";
+  aiStatus?: "pending" | "finding_source" | "done" | "no_source" | "error";
   reminderDate?: string;    // ISO
   createdAt: string;        // ISO
   updatedAt: string;        // ISO

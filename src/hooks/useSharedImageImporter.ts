@@ -49,7 +49,7 @@ export function useSharedImageImporter() {
               sourceCandidates: source.candidates,
               sourceConfidence: source.confidence,
               sourceSearchQuery: source.searchQuery,
-              aiStatus: "done",
+              aiStatus: source.link || source.candidates.length > 0 || source.searchQuery ? "done" : "no_source",
             });
           } catch {
             update(item.id, { aiStatus: "done" });
