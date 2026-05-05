@@ -30,7 +30,8 @@ app.post("/api/analyze-screenshot", async (req, res) => {
     }
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const { imageDataUrl, sourceURL, note, categories } = req.body ?? {};
+    const { imageDataUrl, sourceURL, note, categories, mode } = req.body ?? {};
+    const fastMode = mode === "fast";
     if (typeof imageDataUrl !== "string" || !imageDataUrl.startsWith("data:image/")) {
       res.status(400).json({ error: "imageDataUrl must be a data:image URL." });
       return;
@@ -53,15 +54,23 @@ app.post("/api/analyze-screenshot", async (req, res) => {
     const image = parseDataUrl(imageDataUrl);
     const response = await anthropic.messages.create({
       model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
-      max_tokens: 1200,
+      max_tokens: fastMode ? 450 : 1200,
       system: [
-        "You help a screenshot-saving app identify the source or best search strategy for screenshots.",
-        "Analyze visual details, visible text, brand names, products, article headlines, prices, dates, social handles, domains, places, and UI context.",
+        fastMode
+          ? "You help a screenshot-saving app quickly title, categorize, and summarize screenshots."
+          : "You help a screenshot-saving app identify the source or best search strategy for screenshots.",
+        fastMode
+          ? "Prioritize speed. Use obvious visual details, visible text, brand names, products, article headlines, places, and UI context."
+          : "Analyze visual details, visible text, brand names, products, article headlines, prices, dates, social handles, domains, places, and UI context.",
         "You do not have live web browsing in this endpoint. Do not pretend you verified a URL online.",
         "If an exact source URL is supplied by the app, use it as the link.",
-        "If no exact URL is supplied, create a highly specific searchQuery and useful candidates based on visible evidence.",
+        fastMode
+          ? "If no exact URL is supplied, leave link empty. Do not spend effort building source candidates."
+          : "If no exact URL is supplied, create a highly specific searchQuery and useful candidates based on visible evidence.",
         "Never invent a definitive product/article URL from only a brand or domain. Domains alone are not enough.",
-        "For candidates, include a url only when the exact full URL is supplied or clearly visible. Otherwise leave url empty but include title, source, reason, confidence, and searchQuery.",
+        fastMode
+          ? "Return an empty candidates array unless a full exact URL is supplied or clearly visible."
+          : "For candidates, include a url only when the exact full URL is supplied or clearly visible. Otherwise leave url empty but include title, source, reason, confidence, and searchQuery.",
         categoryGuidance,
         "Return only valid JSON matching the requested shape.",
         categoryLines ? `Available categories:\n${categoryLines}` : "",
@@ -73,12 +82,16 @@ app.post("/api/analyze-screenshot", async (req, res) => {
             {
               type: "text",
               text: [
-                "Find the source or likely matches for this screenshot.",
+                fastMode ? "Quickly categorize this screenshot." : "Find the source or likely matches for this screenshot.",
                 sourceURL ? `Known source URL from iOS share sheet: ${sourceURL}` : "No source URL was supplied by iOS.",
                 note ? `User note: ${note}` : "",
                 "Return JSON with: category, title, notes, link, confidence, searchQuery, candidates.",
-                "candidates must be an array of up to 5 objects: title, url, source, confidence, reason, searchQuery.",
-                "For candidates without a verified URL, leave url empty and put the likely title/source/reason/searchQuery.",
+                fastMode
+                  ? "Keep notes to one short sentence. Use an empty searchQuery and empty candidates unless the screenshot clearly shows an exact full URL."
+                  : "candidates must be an array of up to 5 objects: title, url, source, confidence, reason, searchQuery.",
+                fastMode
+                  ? ""
+                  : "For candidates without a verified URL, leave url empty and put the likely title/source/reason/searchQuery.",
                 "Use link only when it was supplied by iOS or a full exact URL is clearly visible in the image.",
               ].filter(Boolean).join("\n"),
             },
@@ -99,7 +112,7 @@ app.post("/api/analyze-screenshot", async (req, res) => {
     if (!textBlock) throw new Error("Claude did not return text.");
     const parsed = parseJSON(textBlock.text);
     const normalized = normalizeResult(parsed);
-    const searched = await enrichWithSearch(normalized);
+    const searched = fastMode ? normalized : await enrichWithSearch(normalized);
     res.json(searched);
   } catch (error) {
     console.error(error);

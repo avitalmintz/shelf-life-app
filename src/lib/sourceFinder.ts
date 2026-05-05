@@ -15,6 +15,7 @@ export async function findScreenshotSource(input: {
   sourceURL?: string;
   note?: string;
   categories: CategoryDefinition[];
+  mode?: "fast" | "source";
 }): Promise<SourceFinderResult> {
   const baseUrl = import.meta.env.VITE_SOURCE_API_URL;
   if (!baseUrl) {
