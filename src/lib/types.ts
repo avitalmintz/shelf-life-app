@@ -12,6 +12,9 @@ export interface ShelfItem {
   category: Category;
   notes?: string;
   link?: string;
+  sourceCandidates?: SourceCandidate[];
+  sourceConfidence?: number;
+  sourceSearchQuery?: string;
   priority: Priority;
   status: Status;
   aiStatus?: "pending" | "done" | "error";
@@ -19,6 +22,14 @@ export interface ShelfItem {
   createdAt: string;        // ISO
   updatedAt: string;        // ISO
   lastResurfacedAt?: string;
+}
+
+export interface SourceCandidate {
+  title: string;
+  url: string;
+  source?: string;
+  confidence?: number;
+  reason?: string;
 }
 
 export interface CategoryDefinition {

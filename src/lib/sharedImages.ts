@@ -4,6 +4,7 @@ interface PendingImage {
   id: string;
   dataUrl: string;
   note?: string;
+  sourceURL?: string;
 }
 
 interface PendingResult {

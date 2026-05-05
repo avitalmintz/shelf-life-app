@@ -15,6 +15,7 @@ public class SharedShelfImagesPlugin: CAPPlugin, CAPBridgedPlugin {
     private static let sharedDirName = "SharedShelfImages"
     private static let pasteboardImageType = "com.screenshotshelf.shared-image"
     private static let pasteboardNoteType = "com.screenshotshelf.shared-note"
+    private static let pasteboardSourceURLType = "com.screenshotshelf.source-url"
 
     @objc func getPending(_ call: CAPPluginCall) {
         guard let container = FileManager.default.containerURL(
@@ -68,6 +69,13 @@ public class SharedShelfImagesPlugin: CAPPlugin, CAPBridgedPlugin {
             let notePath = url.deletingPathExtension().appendingPathExtension("txt")
             if let note = try? String(contentsOf: notePath, encoding: .utf8) {
                 entry["note"] = note
+            }
+
+            let metadataPath = url.deletingPathExtension().appendingPathExtension("json")
+            if let metadataData = try? Data(contentsOf: metadataPath),
+               let metadata = try? JSONSerialization.jsonObject(with: metadataData) as? [String: String],
+               let sourceURL = metadata["sourceURL"] {
+                entry["sourceURL"] = sourceURL
             }
 
             images.append(entry)
@@ -164,7 +172,7 @@ public class SharedShelfImagesPlugin: CAPPlugin, CAPBridgedPlugin {
         let dir = container.appendingPathComponent(SharedShelfImagesPlugin.sharedDirName)
 
         for id in ids {
-            for ext in ["jpg", "jpeg", "png", "gif", "webp", "txt"] {
+            for ext in ["jpg", "jpeg", "png", "gif", "webp", "txt", "json"] {
                 let path = dir.appendingPathComponent("\(id).\(ext)")
                 try? FileManager.default.removeItem(at: path)
             }
@@ -186,6 +194,10 @@ public class SharedShelfImagesPlugin: CAPPlugin, CAPBridgedPlugin {
             if let noteData = item[pasteboardNoteType] as? Data,
                let note = String(data: noteData, encoding: .utf8) {
                 entry["note"] = note
+            }
+            if let sourceURLData = item[pasteboardSourceURLType] as? Data,
+               let sourceURL = String(data: sourceURLData, encoding: .utf8) {
+                entry["sourceURL"] = sourceURL
             }
             images.append(entry)
         }

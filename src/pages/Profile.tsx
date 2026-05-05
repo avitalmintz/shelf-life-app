@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useShelf } from "@/lib/storage";
-import { getApiKey, setApiKey } from "@/lib/aiCategorize";
 import {
   addCustomCategory,
   removeCustomCategory,
@@ -22,15 +21,8 @@ export default function Profile() {
   const counts = categories.map(c => ({ ...c, n: items.filter(i => i.category === c.value).length }));
   const done = items.filter(i => i.status === "done").length;
 
-  const [apiKey, setApiKeyInput] = useState(getApiKey());
   const [categoryName, setCategoryName] = useState("");
   const [categoryContext, setCategoryContext] = useState("");
-  const hasKey = getApiKey().length > 0;
-
-  const saveKey = () => {
-    setApiKey(apiKey);
-    toast.success(apiKey.trim() ? "API key saved" : "API key removed");
-  };
 
   const exportData = () => {
     const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
@@ -82,34 +74,6 @@ export default function Profile() {
         <Stat label="Saved" value={items.length} />
         <Stat label="Done"  value={done} />
       </div>
-
-      <section className="space-y-2">
-        <h2 className="section-title">AI categorization</h2>
-        <div className="rounded-2xl bg-card p-4 space-y-3">
-          <div>
-            <Label htmlFor="apikey">Anthropic API key</Label>
-            <Input
-              id="apikey"
-              type="password"
-              value={apiKey}
-              onChange={e => setApiKeyInput(e.target.value)}
-              placeholder="sk-ant-..."
-              className="mt-1.5 font-mono text-sm"
-              autoComplete="off"
-            />
-          </div>
-          <Button onClick={saveKey} className="w-full rounded-full" size="sm">
-            {hasKey ? "Update key" : "Save key"}
-          </Button>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Get a key at{" "}
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="text-primary underline">
-              console.anthropic.com
-            </a>
-            . Stored on this device only — used to auto-detect what your screenshots are.
-          </p>
-        </div>
-      </section>
 
       <section className="space-y-2">
         <h2 className="section-title">Custom categories</h2>
