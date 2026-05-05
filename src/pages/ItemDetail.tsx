@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useShelf, timeAgo } from "@/lib/storage";
 import { Category, STATUSES, Status, ShelfItem, statusMeta } from "@/lib/types";
 import { categoryMeta, useCategories } from "@/lib/categories";
-import { ArrowLeft, Trash2, ExternalLink, Check } from "lucide-react";
+import { ArrowLeft, Trash2, ExternalLink, Check, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import StoredImage from "@/components/StoredImage";
+import { getStoredImage } from "@/lib/imageStore";
+import { findScreenshotSource } from "@/lib/sourceFinder";
 
 function toDateTimeLocal(iso?: string): string {
   if (!iso) return "";
@@ -31,6 +33,7 @@ export default function ItemDetail() {
   const { items, get, update, remove } = useShelf();
   const categories = useCategories();
   const [item, setItem] = useState<ShelfItem | undefined>(undefined);
+  const [findingSource, setFindingSource] = useState(false);
 
   useEffect(() => {
     if (id) setItem(get(id));
@@ -51,6 +54,36 @@ export default function ItemDetail() {
   };
 
   const cat = categoryMeta(item.category);
+
+  const findSource = async () => {
+    setFindingSource(true);
+    try {
+      const imageDataUrl = (await getStoredImage(item.imageStorageKey)) ?? item.image;
+      const result = await findScreenshotSource({
+        imageDataUrl,
+        sourceURL: item.link,
+        note: item.notes,
+        categories,
+      });
+      const next: Partial<ShelfItem> = {
+        title: result.title || item.title,
+        notes: [result.notes, item.notes].filter(Boolean).join("\n\n") || undefined,
+        category: result.category || item.category,
+        link: result.link || item.link,
+        sourceCandidates: result.candidates,
+        sourceConfidence: result.confidence,
+        sourceSearchQuery: result.searchQuery,
+      };
+      patch(next);
+      toast.success(result.link ? "Source found" : "Possible matches found");
+    } catch (error) {
+      toast.error("Could not find source", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setFindingSource(false);
+    }
+  };
 
   return (
     <div className="pb-6">
@@ -114,6 +147,38 @@ export default function ItemDetail() {
               </a>
             )}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-2 w-full rounded-full"
+            onClick={findSource}
+            disabled={findingSource}
+          >
+            {findingSource ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            Find source
+          </Button>
+          {item.sourceCandidates && item.sourceCandidates.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Possible matches
+              </p>
+              {item.sourceCandidates.map(candidate => (
+                <a
+                  key={candidate.url}
+                  href={candidate.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-xl border border-border bg-card p-3 text-sm"
+                >
+                  <div className="font-medium leading-snug">{candidate.title || candidate.url}</div>
+                  <div className="mt-1 text-xs text-muted-foreground line-clamp-1">{candidate.source || candidate.url}</div>
+                  {candidate.reason && (
+                    <div className="mt-1 text-xs text-muted-foreground">{candidate.reason}</div>
+                  )}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

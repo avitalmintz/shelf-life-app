@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { compactStoredImages, useShelf } from "@/lib/storage";
 import { getPendingSharedImages, clearSharedImages } from "@/lib/sharedImages";
-import { categorizeScreenshot, getApiKey } from "@/lib/aiCategorize";
+import { categorizeScreenshot, isAIConfigured } from "@/lib/aiCategorize";
 import { compressDataUrlForStorage } from "@/lib/imageCompression";
 import { getStoredImage, storeImage } from "@/lib/imageStore";
 
@@ -12,19 +12,22 @@ export function useSharedImageImporter() {
   const categorizingRef = useRef(new Set<string>());
 
   useEffect(() => {
-    if (getApiKey().length === 0) return;
+    if (!isAIConfigured()) return;
 
     for (const item of items) {
       if (item.aiStatus !== "pending" || categorizingRef.current.has(item.id)) continue;
       categorizingRef.current.add(item.id);
       void getStoredImage(item.imageStorageKey)
-        .then(image => categorizeScreenshot(image ?? item.image))
+        .then(image => categorizeScreenshot(image ?? item.image, { sourceURL: item.link, note: item.notes }))
         .then(result => {
           update(item.id, {
             title: result.title,
             notes: [result.notes, item.notes].filter(Boolean).join("\n\n") || undefined,
             link: result.link || item.link,
             category: result.category,
+            sourceCandidates: result.sourceCandidates,
+            sourceConfidence: result.sourceConfidence,
+            sourceSearchQuery: result.sourceSearchQuery,
             aiStatus: "done",
           });
         })
@@ -47,7 +50,7 @@ export function useSharedImageImporter() {
         const pending = await getPendingSharedImages();
         if (pending.length === 0) return;
 
-        const hasApiKey = getApiKey().length > 0;
+        const hasAI = isAIConfigured();
 
         const toastId = toast.loading(
           `Importing ${pending.length} screenshot${pending.length === 1 ? "" : "s"}…`
@@ -65,13 +68,13 @@ export function useSharedImageImporter() {
             const baseItem = {
               image: thumbnailImage,
               imageStorageKey,
-              title: hasApiKey ? "Categorizing..." : "Shared screenshot",
+              title: hasAI ? "Categorizing..." : "Shared screenshot",
               notes: img.note || undefined,
-              link: undefined,
+              link: img.sourceURL || undefined,
               category: "other" as const,
               priority: "medium" as const,
               status: "saved" as const,
-              aiStatus: hasApiKey ? ("pending" as const) : ("done" as const),
+              aiStatus: hasAI ? ("pending" as const) : ("done" as const),
             };
             try {
               add(baseItem);
@@ -99,7 +102,7 @@ export function useSharedImageImporter() {
         toast.dismiss(toastId);
         if (processed.length > 0 && errors.length === 0) {
           toast.success(`Saved ${processed.length} from share`, {
-            description: hasApiKey ? "Categorizing in the background." : "Saved without AI categorization.",
+            description: hasAI ? "Categorizing and finding sources in the background." : "Saved without AI categorization.",
           });
         } else if (processed.length > 0 && errors.length > 0) {
           toast.warning(`Imported ${processed.length}, ${errors.length} failed`, {
@@ -139,7 +142,7 @@ export function useManualSharedImport() {
       toast.info("No shared images waiting");
       return;
     }
-    const hasApiKey = getApiKey().length > 0;
+    const hasAI = isAIConfigured();
     const toastId = toast.loading(`Importing ${pending.length}…`);
     const processed: string[] = [];
     const errors: string[] = [];
@@ -152,13 +155,13 @@ export function useManualSharedImport() {
         add({
           image: thumbnailImage,
           imageStorageKey,
-          title: hasApiKey ? "Categorizing..." : "Shared screenshot",
+          title: hasAI ? "Categorizing..." : "Shared screenshot",
           notes: img.note || undefined,
-          link: undefined,
+          link: img.sourceURL || undefined,
           category: "other",
           priority: "medium",
           status: "saved",
-          aiStatus: hasApiKey ? "pending" : "done",
+          aiStatus: hasAI ? "pending" : "done",
         });
         processed.push(img.id);
       } catch (e) {
@@ -172,7 +175,7 @@ export function useManualSharedImport() {
     toast.dismiss(toastId);
     if (processed.length > 0) {
       toast.success(`Imported ${processed.length}`, {
-        description: hasApiKey ? undefined : "Saved without AI categorization.",
+        description: hasAI ? undefined : "Saved without AI categorization.",
       });
     }
     if (errors.length > 0) {

@@ -16,6 +16,7 @@ class ShareViewController: SLComposeServiceViewController {
     private static let sharedDirName = "SharedShelfImages"
     private static let pasteboardImageType = "com.screenshotshelf.shared-image"
     private static let pasteboardNoteType = "com.screenshotshelf.shared-note"
+    private static let pasteboardSourceURLType = "com.screenshotshelf.source-url"
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -42,6 +43,7 @@ class ShareViewController: SLComposeServiceViewController {
         appendLog("attachments: \(providers.count)")
         let userNote = self.contentText ?? ""
         let group = DispatchGroup()
+        let sourceURL = extractSourceURL(from: item, providers: providers)
 
         for (i, provider) in providers.enumerated() {
             if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
@@ -55,7 +57,7 @@ class ShareViewController: SLComposeServiceViewController {
                     }
                     if let bytes = self.extractImageData(from: data) {
                         self.appendLog("attachment \(i): extracted \(bytes.count) bytes")
-                        let ok = self.saveSharedImage(bytes, note: userNote)
+                        let ok = self.saveSharedImage(bytes, note: userNote, sourceURL: sourceURL)
                         self.appendLog("attachment \(i): saveSharedImage → \(ok)")
                     } else {
                         self.appendLog("attachment \(i): could not extract data, type was \(type(of: data))")
@@ -96,6 +98,75 @@ class ShareViewController: SLComposeServiceViewController {
         return nil
     }
 
+    private func extractSourceURL(from item: NSExtensionItem, providers: [NSItemProvider]) -> String? {
+        if let attributedContentText = item.attributedContentText?.string,
+           let url = firstURL(in: attributedContentText) {
+            appendLog("source URL from attributedContentText: \(url)")
+            return url
+        }
+
+        if let attributedTitle = item.attributedTitle?.string,
+           let url = firstURL(in: attributedTitle) {
+            appendLog("source URL from attributedTitle: \(url)")
+            return url
+        }
+
+        for provider in providers {
+            if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+                let semaphore = DispatchSemaphore(value: 0)
+                var found: String?
+                provider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { data, _ in
+                    if let url = data as? URL {
+                        found = url.absoluteString
+                    } else if let text = data as? String {
+                        found = self.firstURL(in: text)
+                    }
+                    semaphore.signal()
+                }
+                _ = semaphore.wait(timeout: .now() + 1.5)
+                if let found {
+                    appendLog("source URL from URL attachment: \(found)")
+                    return found
+                }
+            }
+        }
+
+        for provider in providers {
+            if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
+                let semaphore = DispatchSemaphore(value: 0)
+                var found: String?
+                provider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { data, _ in
+                    if let text = data as? String {
+                        found = self.firstURL(in: text)
+                    } else if let data = data as? Data,
+                              let text = String(data: data, encoding: .utf8) {
+                        found = self.firstURL(in: text)
+                    }
+                    semaphore.signal()
+                }
+                _ = semaphore.wait(timeout: .now() + 1.5)
+                if let found {
+                    appendLog("source URL from text attachment: \(found)")
+                    return found
+                }
+            }
+        }
+
+        appendLog("source URL not available from share input")
+        return nil
+    }
+
+    private func firstURL(in text: String) -> String? {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return nil
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return detector
+            .matches(in: text, options: [], range: range)
+            .compactMap { $0.url?.absoluteString }
+            .first
+    }
+
     private func appGroupDir() -> URL? {
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: ShareViewController.appGroupID) else {
             return nil
@@ -134,7 +205,7 @@ class ShareViewController: SLComposeServiceViewController {
         }
     }
 
-    private func saveToAppGroup(_ data: Data, note: String) -> Bool {
+    private func saveToAppGroup(_ data: Data, note: String, sourceURL: String?) -> Bool {
         guard let dir = appGroupDir() else {
             appendLog("ERROR: appGroupDir nil — App Group entitlement is not active")
             return false
@@ -143,12 +214,19 @@ class ShareViewController: SLComposeServiceViewController {
         let id = UUID().uuidString
         let imagePath = dir.appendingPathComponent("\(id).jpg")
         let notePath = dir.appendingPathComponent("\(id).txt")
+        let metadataPath = dir.appendingPathComponent("\(id).json")
 
         do {
             try data.write(to: imagePath)
             appendLog("wrote image: \(imagePath.lastPathComponent) (\(data.count) bytes)")
             if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 try? note.write(to: notePath, atomically: true, encoding: .utf8)
+            }
+            if let sourceURL, !sourceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let metadata = ["sourceURL": sourceURL]
+                if let metadataData = try? JSONSerialization.data(withJSONObject: metadata, options: []) {
+                    try? metadataData.write(to: metadataPath)
+                }
             }
             return true
         } catch {
@@ -157,19 +235,22 @@ class ShareViewController: SLComposeServiceViewController {
         }
     }
 
-    private func saveSharedImage(_ data: Data, note: String) -> Bool {
-        if saveToAppGroup(data, note: note) {
+    private func saveSharedImage(_ data: Data, note: String, sourceURL: String?) -> Bool {
+        if saveToAppGroup(data, note: note, sourceURL: sourceURL) {
             return true
         }
-        return saveToPasteboard(data, note: note)
+        return saveToPasteboard(data, note: note, sourceURL: sourceURL)
     }
 
-    private func saveToPasteboard(_ data: Data, note: String) -> Bool {
+    private func saveToPasteboard(_ data: Data, note: String, sourceURL: String?) -> Bool {
         var item: [String: Any] = [
             ShareViewController.pasteboardImageType: data
         ]
         if let noteData = note.data(using: .utf8), !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             item[ShareViewController.pasteboardNoteType] = noteData
+        }
+        if let sourceURLData = sourceURL?.data(using: .utf8) {
+            item[ShareViewController.pasteboardSourceURLType] = sourceURLData
         }
         var items = UIPasteboard.general.items
         items.append(item)

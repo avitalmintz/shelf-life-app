@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: shelf-life-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-7
+      - key: ANTHROPIC_API_KEY
+        sync: false
