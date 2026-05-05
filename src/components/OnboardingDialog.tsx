@@ -12,15 +12,20 @@ import { hasSeenOnboarding, markOnboardingSeen, onOnboardingRequested } from "@/
 
 export default function OnboardingDialog() {
   const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     if (!hasSeenOnboarding()) setOpen(true);
-    return onOnboardingRequested(() => setOpen(true));
+    return onOnboardingRequested(() => {
+      setPage(0);
+      setOpen(true);
+    });
   }, []);
 
   const close = () => {
     markOnboardingSeen();
     setOpen(false);
+    setPage(0);
   };
 
   return (
@@ -35,46 +40,71 @@ export default function OnboardingDialog() {
               How Screenshot Shelf works
             </DialogTitle>
             <DialogDescription>
-              Save screenshots from anywhere, then let the app import, categorize, and find useful links when you open it.
+              {page === 0
+                ? "Set up the share sheet once, then send screenshots here from anywhere."
+                : "Open the app once to import, categorize, find links, and set reminders."}
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="px-5 pb-5 space-y-4">
-          <Step
-            icon={<Share2 className="h-5 w-5" />}
-            title="Add it to your share sheet"
-            text="On your iPhone, tap the share button on a screenshot. If Screenshot Shelf is not in the app row, scroll to the end, tap More, and add it. Then choose Screenshot Shelf and tap Post."
-          />
-          <Step
-            icon={<Bell className="h-5 w-5" />}
-            title="Allow notifications"
-            text="iOS may show a notification instead of opening the app automatically. Tap it once to open Screenshot Shelf and start importing."
-          />
-          <Step
-            icon={<Sparkles className="h-5 w-5" />}
-            title="You do not need to wait"
-            text="iPhone does not let this work continue fully in the background. Share one screenshot or a bunch, then visit the app once. After import starts, you can leave; categorizing finishes next time the app gets time."
-          />
-          <Step
-            icon={<FolderPlus className="h-5 w-5" />}
-            title="Customize your shelves"
-            text='In Profile, turn default categories on or off or add your own, like "Compliments," with guidance for what screenshots belong there.'
-          />
-          <Step
-            icon={<Link className="h-5 w-5" />}
-            title="Links are best guesses"
-            text="If iOS gives us the original link, the app saves it. Otherwise the backend reads the screenshot and searches for likely source links you can check."
-          />
-          <Step
-            icon={<Check className="h-5 w-5" />}
-            title="Set reminders when needed"
-            text="Open any saved item to pick a reminder date and time. Your iPhone sends a notification when it is due."
-          />
+          {page === 0 ? (
+            <>
+              <Step
+                icon={<Share2 className="h-5 w-5" />}
+                title="Add it to your share sheet"
+                text="On your iPhone, tap the share button on a screenshot. If Screenshot Shelf is not in the app row, scroll to the end, tap More, and add it."
+              />
+              <Step
+                icon={<Bell className="h-5 w-5" />}
+                title="Tap Post, then open"
+                text="Choose Screenshot Shelf and tap Post. If iOS shows a notification, tap it right away to open the app, or keep screenshotting and open the app later."
+              />
+              <Step
+                icon={<Sparkles className="h-5 w-5" />}
+                title="You can leave after it starts"
+                text="The app starts importing when you visit it. You do not need to wait on the screen; if iOS pauses it, categorizing continues next time you open the app."
+              />
+            </>
+          ) : (
+            <>
+              <Step
+                icon={<FolderPlus className="h-5 w-5" />}
+                title="Customize your shelves"
+                text='In Profile, turn categories on or off or add your own, like "Compliments," with guidance for what belongs there.'
+              />
+              <Step
+                icon={<Link className="h-5 w-5" />}
+                title="Links are suggested"
+                text="If iOS provides the original link, the app saves it. Otherwise it reads the screenshot and searches for likely source links."
+              />
+              <Step
+                icon={<Check className="h-5 w-5" />}
+                title="Set reminders"
+                text="Open any saved item to pick a reminder date and time. Your iPhone sends a notification when it is due."
+              />
+            </>
+          )}
 
-          <Button onClick={close} className="w-full rounded-full h-11">
-            Got it
-          </Button>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="flex gap-1.5">
+              {[0, 1].map(i => (
+                <span
+                  key={i}
+                  className={`h-2 w-2 rounded-full ${page === i ? "bg-primary" : "bg-muted"}`}
+                />
+              ))}
+            </div>
+            {page === 0 ? (
+              <Button onClick={() => setPage(1)} className="rounded-full h-11 px-6">
+                Next
+              </Button>
+            ) : (
+              <Button onClick={close} className="rounded-full h-11 px-6">
+                Got it
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
