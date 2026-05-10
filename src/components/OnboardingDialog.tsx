@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Share2, Sparkles } from "lucide-react";
+import { Share2, Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,8 +50,13 @@ export default function OnboardingDialog() {
           />
           <Step
             icon={<Sparkles className="h-5 w-5" />}
-            title="Open the app to process"
-            text="After you tap Post, visit Shelf Life once. You can leave after it starts; categorizing continues next time if iOS pauses it."
+            title="Tap the notification"
+            text="After you tap Post, iOS sends a Shelf Life notification. Tap it once to open the app and start importing. You can leave right after you open the app; it will continue categorizing."
+          />
+          <Step
+            icon={<User className="h-5 w-5" />}
+            title="Make your own categories"
+            text="Press Profile to add custom categories or turn off ones you do not use."
           />
           <p className="rounded-xl bg-muted/70 px-3 py-2 text-sm text-muted-foreground">
             The plus button is only for manual uploads.
