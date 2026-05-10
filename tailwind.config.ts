@@ -10,7 +10,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
-        display: ['Fraunces', 'ui-serif', 'Georgia'],
+        display: ['Newsreader', 'ui-serif', 'Georgia'],
       },
       colors: {
         border: "hsl(var(--border))",

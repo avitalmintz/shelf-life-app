@@ -66,7 +66,7 @@ export default function Profile() {
           You
         </div>
         <div>
-          <h1 className="font-display text-2xl font-semibold">Your Shelf</h1>
+          <h1 className="font-display text-2xl font-semibold">Your shelf</h1>
           <p className="text-sm text-muted-foreground">A second brain for your screenshots</p>
         </div>
       </header>

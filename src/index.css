@@ -107,8 +107,8 @@
     font-feature-settings: "ss01", "cv11";
   }
   h1, h2, h3, h4 {
-    font-family: 'Fraunces', 'Inter', ui-serif, Georgia, serif;
-    letter-spacing: -0.01em;
+    font-family: 'Newsreader', 'Inter', ui-serif, Georgia, serif;
+    letter-spacing: 0;
   }
 }
 
@@ -125,7 +125,7 @@
   }
   .section-title {
     @apply text-xl font-semibold tracking-tight;
-    font-family: 'Fraunces', serif;
+    font-family: 'Newsreader', serif;
   }
   .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 5.5rem); }
   .safe-top { padding-top: env(safe-area-inset-top); }

@@ -87,7 +87,7 @@ function Empty() {
       <div className="h-24 w-24 rounded-3xl bg-gradient-warm shadow-pop flex items-center justify-center mb-6 animate-pop-in">
         <Sparkles className="h-10 w-10 text-primary-foreground" />
       </div>
-      <h1 className="text-3xl font-display font-semibold mb-2">Welcome to your Shelf</h1>
+      <h1 className="text-3xl font-display font-semibold mb-2">Welcome to your shelf</h1>
       <p className="text-muted-foreground max-w-xs mb-8">
         Save screenshots from the iPhone share button. Open Shelf Life once afterward so AI can organize them.
       </p>
