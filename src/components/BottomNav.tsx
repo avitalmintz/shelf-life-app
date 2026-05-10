@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { to: "/",          label: "Home",      icon: Home },
   { to: "/search",    label: "Search",    icon: Search },
-  { to: "/add",       label: "Add",       icon: Plus, primary: true },
+  { to: "/add",       label: "Upload",    icon: Plus },
   { to: "/resurface", label: "Resurface", icon: Sparkles },
   { to: "/profile",   label: "Profile",   icon: User },
 ];
@@ -18,21 +18,8 @@ export default function BottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="max-w-md mx-auto grid grid-cols-5 px-2 pt-2 pb-2">
-        {items.map(({ to, label, icon: Icon, primary }) => {
+        {items.map(({ to, label, icon: Icon }) => {
           const active = pathname === to || (to !== "/" && pathname.startsWith(to));
-          if (primary) {
-            return (
-              <li key={to} className="flex justify-center">
-                <NavLink
-                  to={to}
-                  aria-label={label}
-                  className="-mt-7 h-14 w-14 rounded-full bg-gradient-warm shadow-pop flex items-center justify-center text-primary-foreground active:scale-95 transition"
-                >
-                  <Icon className="h-6 w-6" />
-                </NavLink>
-              </li>
-            );
-          }
           return (
             <li key={to} className="flex justify-center">
               <NavLink

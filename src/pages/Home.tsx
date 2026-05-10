@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useShelf } from "@/lib/storage";
 import { useCategories } from "@/lib/categories";
 import ItemCard from "@/components/ItemCard";
-import { Sparkles, Plus } from "lucide-react";
+import { Share2, Sparkles, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const sections: { title: string; filter: (i: ReturnType<typeof useShelf>["items"][number]) => boolean }[] = [
@@ -89,14 +89,25 @@ function Empty() {
       </div>
       <h1 className="text-3xl font-display font-semibold mb-2">Welcome to your Shelf</h1>
       <p className="text-muted-foreground max-w-xs mb-8">
-        Stop losing screenshots in your camera roll. Save them here and AI will figure out what each one is.
+        Save screenshots from the iPhone share button. Open Shelf Life once afterward so AI can organize them.
       </p>
-      <Link
-        to="/add"
-        className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-full font-semibold shadow-pop active:scale-95 transition"
-      >
-        <Plus className="h-5 w-5" /> Add your first screenshot
-      </Link>
+      <div className="w-full max-w-xs space-y-3">
+        <div className="rounded-2xl bg-card border border-border p-4 text-left shadow-card">
+          <div className="flex items-center gap-2 font-semibold">
+            <Share2 className="h-4 w-4 text-primary" />
+            Share screenshots here
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tap Share on any screenshot. If Shelf Life is not shown, scroll to More and add it.
+          </p>
+        </div>
+        <Link
+          to="/add"
+          className="inline-flex items-center justify-center gap-2 text-muted-foreground text-sm font-medium"
+        >
+          <Plus className="h-4 w-4" /> Upload manually instead
+        </Link>
+      </div>
       <div className="mt-12 grid grid-cols-2 gap-3 w-full max-w-xs text-left">
         {categories.slice(0, 4).map(c => (
           <div key={c.value} className={cn("rounded-2xl p-3", c.tw)}>
