@@ -46,7 +46,7 @@ export default function OnboardingDialog() {
           <Step
             icon={<Share2 className="h-5 w-5" />}
             title="Add Shelf Life once"
-            text="When viewing a screenshot, tap Share. If Shelf Life is not listed, scroll to More and add it."
+            text="When viewing a screenshot, tap Share. If Shelf Life is not listed, scroll to More and add it to your share sheet so it appears there next time."
           />
           <Step
             icon={<Sparkles className="h-5 w-5" />}
