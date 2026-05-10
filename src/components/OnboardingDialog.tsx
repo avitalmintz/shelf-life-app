@@ -151,8 +151,8 @@ function CategorySetup({
             onClick={() => onToggle(category.id)}
             className={`rounded-xl border px-3 py-2 text-left text-sm font-medium transition ${
               selected.has(category.id)
-                ? "border-primary bg-primary-soft text-primary"
-                : "border-border bg-card text-foreground"
+                ? "border-border bg-card text-foreground"
+                : "border-primary bg-primary-soft text-primary"
             }`}
           >
             {category.label}
