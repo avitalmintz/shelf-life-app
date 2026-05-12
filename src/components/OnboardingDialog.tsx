@@ -79,7 +79,7 @@ export default function OnboardingDialog() {
               <Step
                 icon={<Share2 className="h-5 w-5" />}
                 title="Add Shelf Life once"
-                text="When viewing a screenshot, tap Share. If Shelf Life is not in the top app row, scroll to More and add it there so you do not have to keep scrolling."
+                text="When viewing a screenshot, tap Share, then More. In the full app list, add Shelf Life and move it near the top so next time you can tap it without opening More."
               />
               <Step
                 icon={<Sparkles className="h-5 w-5" />}
