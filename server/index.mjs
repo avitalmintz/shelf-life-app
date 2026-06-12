@@ -117,8 +117,8 @@ app.post("/api/analyze-screenshot", async (req, res) => {
     const textBlock = response.content.find(block => block.type === "text");
     if (!textBlock) throw new Error("Claude did not return text.");
     const parsed = parseJSON(textBlock.text);
-    const normalized = normalizeResult(parsed);
-    const searched = fastMode ? normalized : await enrichWithSearch(normalized);
+    const normalized = normalizeResult(parsed, sourceURL);
+    const searched = fastMode ? normalized : await enrichWithSearch(normalized, { anthropic, image, note });
     res.json(searched);
   } catch (error) {
     console.error(error);
@@ -149,7 +149,7 @@ function parseDataUrl(dataUrl) {
   return { mediaType, base64: match[2] };
 }
 
-function normalizeResult(value) {
+function normalizeResult(value, sourceURL) {
   const searchQuery = stringOrEmpty(value?.searchQuery);
   const candidates = Array.isArray(value?.candidates)
     ? value.candidates.slice(0, 5).map(candidate => ({
@@ -172,21 +172,28 @@ function normalizeResult(value) {
     });
   }
 
-  const link = sanitizeURL(stringOrEmpty(value?.link));
-  const promoted = link || candidates.find(candidate => candidate.url && (candidate.confidence ?? 0) >= 0.88)?.url || "";
+  // The only link we treat as a confirmed exact source is one iOS handed us from
+  // the share sheet. Anything the model reads off the image is a best guess until
+  // it has been verified against the live page.
+  const cleanSourceURL = sanitizeURL(stringOrEmpty(sourceURL));
+  const aiLink = sanitizeURL(stringOrEmpty(value?.link));
+  const visibleCandidateURL = candidates.find(candidate => candidate.url && (candidate.confidence ?? 0) >= 0.88)?.url || "";
+  const link = cleanSourceURL || aiLink || visibleCandidateURL;
+  const linkConfirmed = Boolean(cleanSourceURL) && link === cleanSourceURL;
 
   return {
     category: stringOrEmpty(value?.category) || "other",
     title: stringOrEmpty(value?.title) || "Saved screenshot",
     notes: stringOrEmpty(value?.notes),
-    link: promoted,
+    link,
+    linkConfirmed,
     confidence: numberBetween(value?.confidence, 0, 1),
     searchQuery,
     candidates,
   };
 }
 
-async function enrichWithSearch(result) {
+async function enrichWithSearch(result, { anthropic, image, note } = {}) {
   if (!process.env.BRAVE_SEARCH_API_KEY || !result.searchQuery) {
     return result;
   }
@@ -196,28 +203,192 @@ async function enrichWithSearch(result) {
     if (results.length === 0) return result;
 
     const existing = new Set(result.candidates.map(candidate => candidate.url).filter(Boolean));
-    const searchCandidates = results
-      .filter(candidate => !existing.has(candidate.url))
-      .slice(0, 5)
-      .map(candidate => ({
-        ...candidate,
-        confidence: candidate.confidence,
-        reason: `Search result for "${result.searchQuery}"`,
-        searchQuery: result.searchQuery,
-      }));
+    const searchResults = results.filter(candidate => !existing.has(candidate.url)).slice(0, 5);
+    if (searchResults.length === 0) return result;
 
+    // Pull live page details for the strongest results so the verifier compares
+    // against the real page, not just a search snippet (and dead links surface).
+    const summaries = await Promise.all(
+      searchResults.map((candidate, index) =>
+        index < 3 ? fetchPageSummary(candidate.url) : Promise.resolve(null),
+      ),
+    );
+
+    const verification = await verifyCandidates({
+      anthropic,
+      image,
+      query: result.searchQuery,
+      context: { title: result.title, notes: result.notes, note },
+      candidates: searchResults.map((candidate, index) => ({
+        title: summaries[index]?.title || candidate.title,
+        url: candidate.url,
+        source: candidate.source,
+        snippet: summaries[index]?.description || candidate.description,
+        reachable: index < 3 ? Boolean(summaries[index]) : undefined,
+      })),
+    });
+
+    const searchCandidates = searchResults.map((candidate, index) => {
+      const verdict = verification.scores[index] ?? {};
+      return {
+        title: summaries[index]?.title || candidate.title,
+        url: candidate.url,
+        source: candidate.source,
+        confidence: numberBetween(verdict.score, 0, 1),
+        reason: stringOrEmpty(verdict.reason) || `Search result for "${result.searchQuery}"`,
+        searchQuery: result.searchQuery,
+      };
+    });
+
+    // Strongest verified match first.
+    searchCandidates.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
     const candidates = [...searchCandidates, ...result.candidates].slice(0, 5);
-    const top = candidates.find(candidate => candidate.url && (candidate.confidence ?? 0) >= 0.82);
+
+    // Only auto-fill the link with a guess the verifier is reasonably sure about.
+    const best = searchCandidates.find(candidate => candidate.url && (candidate.confidence ?? 0) >= 0.5);
+    const link = result.link || best?.url || "";
+    const linkConfirmed = Boolean(link) && link === result.link ? result.linkConfirmed : false;
 
     return {
       ...result,
-      link: result.link || top?.url || "",
+      link,
+      linkConfirmed,
       candidates,
     };
   } catch (error) {
     console.error("Search enrichment failed", error);
     return result;
   }
+}
+
+async function verifyCandidates({ anthropic, image, query, context, candidates }) {
+  const fallback = { scores: candidates.map(() => ({ score: 0, reason: "" })) };
+  if (!anthropic || !image || candidates.length === 0) return fallback;
+
+  const candidateLines = candidates
+    .map((candidate, index) =>
+      [
+        `Candidate ${index}:`,
+        `  title: ${candidate.title || "(none)"}`,
+        `  url: ${candidate.url}`,
+        `  site: ${candidate.source || hostname(candidate.url)}`,
+        candidate.snippet ? `  page text: ${candidate.snippet}` : "",
+        candidate.reachable === false ? "  note: page could not be loaded (may be dead or blocked)" : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    )
+    .join("\n\n");
+
+  try {
+    const response = await anthropic.messages.create({
+      model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
+      max_tokens: 600,
+      system: [
+        "You verify whether candidate web pages are the ACTUAL source of a screenshot.",
+        "Be strict and skeptical. A page matches only if it is about the specific item, article, post, product, place, recipe, or video shown in the screenshot.",
+        "A brand homepage, a category or listing page, a search-results page, a different product, or an article that merely mentions the topic is NOT a match.",
+        "If a candidate's page could not be loaded, it cannot be a confident match.",
+        "Score each candidate from 0 to 1 for how likely it is the exact source. Reserve scores above 0.7 for clear, specific matches and use low scores when unsure.",
+        'Return only JSON shaped like {"scores":[{"index":number,"score":number,"reason":string}]} with one entry per candidate.',
+      ].join("\n"),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: [
+                `Screenshot details: title="${context?.title || ""}", notes="${context?.notes || ""}"${context?.note ? `, user note="${context.note}"` : ""}.`,
+                `Search query used to find these candidates: "${query}".`,
+                "Candidates to score:",
+                candidateLines,
+                "Compare each candidate against what is actually visible in the screenshot and score every candidate by index.",
+              ].join("\n"),
+            },
+            {
+              type: "image",
+              source: { type: "base64", media_type: image.mediaType, data: image.base64 },
+            },
+          ],
+        },
+      ],
+    });
+
+    const textBlock = response.content.find(block => block.type === "text");
+    if (!textBlock) return fallback;
+    const parsed = parseJSON(textBlock.text);
+    const entries = Array.isArray(parsed?.scores) ? parsed.scores : [];
+    const scores = candidates.map((_, index) => {
+      const entry = entries.find(score => Number(score?.index) === index);
+      return {
+        score: numberBetween(entry?.score, 0, 1),
+        reason: stringOrEmpty(entry?.reason),
+      };
+    });
+    return { scores };
+  } catch (error) {
+    console.error("Candidate verification failed", error);
+    return fallback;
+  }
+}
+
+async function fetchPageSummary(url) {
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(5000),
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; ShelfLifeBot/1.0; +https://github.com/screenshot-shelf)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType && !contentType.includes("html")) return null;
+    const html = (await response.text()).slice(0, 200_000);
+    const title = stripTags(extractTag(html, /<title[^>]*>([\s\S]*?)<\/title>/i) || extractMeta(html, "og:title"));
+    const description = stripTags(extractMeta(html, "description") || extractMeta(html, "og:description"));
+    if (!title && !description) return null;
+    return {
+      title: title.slice(0, 200),
+      description: description.slice(0, 500),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function extractTag(html, regex) {
+  const match = html.match(regex);
+  return match ? match[1] : "";
+}
+
+function extractMeta(html, key) {
+  const patterns = [
+    new RegExp(`<meta[^>]+(?:name|property)=["']${key}["'][^>]*content=["']([^"']*)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:name|property)=["']${key}["']`, "i"),
+  ];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) return match[1];
+  }
+  return "";
+}
+
+function stripTags(value) {
+  return decodeEntities(stringOrEmpty(value).replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
+function decodeEntities(value) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ");
 }
 
 async function braveSearch(query) {
@@ -242,12 +413,11 @@ async function braveSearch(query) {
   const body = await response.json();
   const webResults = Array.isArray(body?.web?.results) ? body.web.results : [];
   return webResults
-    .map((result, index) => ({
+    .map(result => ({
       title: stringOrEmpty(result.title),
       url: sanitizeURL(stringOrEmpty(result.url)),
       source: stringOrEmpty(result.profile?.name) || hostname(stringOrEmpty(result.url)),
-      confidence: Math.max(0.55, 0.92 - index * 0.08),
-      reason: stringOrEmpty(result.description),
+      description: stringOrEmpty(result.description),
     }))
     .filter(result => result.url);
 }

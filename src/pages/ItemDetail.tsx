@@ -61,7 +61,9 @@ export default function ItemDetail() {
       const imageDataUrl = (await getStoredImage(item.imageStorageKey)) ?? item.image;
       const result = await findScreenshotSource({
         imageDataUrl,
-        sourceURL: item.link,
+        // Only feed back a link we know is the real source; a previous guess
+        // should be re-verified, not treated as ground truth.
+        sourceURL: item.linkConfirmed ? item.link : undefined,
         note: item.notes,
         categories,
       });
@@ -70,12 +72,19 @@ export default function ItemDetail() {
         notes: [result.notes, item.notes].filter(Boolean).join("\n\n") || undefined,
         category: result.category || item.category,
         link: result.link || item.link,
+        linkConfirmed: result.link ? result.linkConfirmed : item.linkConfirmed,
         sourceCandidates: result.candidates,
         sourceConfidence: result.confidence,
         sourceSearchQuery: result.searchQuery,
       };
       patch(next);
-      toast.success(result.link ? "Source found" : "Possible matches found");
+      toast.success(
+        result.link
+          ? result.linkConfirmed
+            ? "Source found"
+            : "Best match found — open it to check"
+          : "Possible matches found",
+      );
     } catch (error) {
       toast.error("Could not find source", {
         description: error instanceof Error ? error.message : String(error),
@@ -158,6 +167,11 @@ export default function ItemDetail() {
               </a>
             )}
           </div>
+          {item.link && !item.linkConfirmed && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Best guess from the screenshot — open it to make sure it's the right page. It may not be exact.
+            </p>
+          )}
           <Button
             type="button"
             variant="outline"
