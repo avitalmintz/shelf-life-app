@@ -24,11 +24,16 @@ export async function findScreenshotSource(input: {
   }
 
   const endpoint = `${baseUrl.replace(/\/$/, "")}/api/analyze-screenshot`;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const sharedKey = import.meta.env.VITE_APP_SHARED_SECRET;
+  if (sharedKey) {
+    headers["x-shelf-key"] = sharedKey;
+  }
   let response: Response;
   try {
     response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(input),
     });
   } catch (error) {
