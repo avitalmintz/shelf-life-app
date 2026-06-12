@@ -1,4 +1,4 @@
-import type { Category } from "./types";
+import type { Category, SourceCandidate } from "./types";
 import { getCategories } from "./categories";
 import { findScreenshotSource } from "./sourceFinder";
 
@@ -7,13 +7,8 @@ export interface AIResult {
   title: string;
   notes: string;
   link: string;
-  sourceCandidates?: Array<{
-    title: string;
-    url: string;
-    source?: string;
-    confidence?: number;
-    reason?: string;
-  }>;
+  linkConfirmed: boolean;
+  sourceCandidates?: SourceCandidate[];
   sourceConfidence?: number;
   sourceSearchQuery?: string;
 }
@@ -41,6 +36,7 @@ export async function categorizeScreenshot(dataUrl: string, context: CategorizeC
     title: result.title,
     notes: result.notes,
     link: result.link,
+    linkConfirmed: result.linkConfirmed,
     sourceCandidates: result.candidates,
     sourceConfidence: result.confidence,
     sourceSearchQuery: result.searchQuery,

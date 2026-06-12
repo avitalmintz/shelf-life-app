@@ -5,6 +5,7 @@ export interface SourceFinderResult {
   title: string;
   notes: string;
   link: string;
+  linkConfirmed: boolean;
   confidence: number;
   searchQuery: string;
   candidates: SourceCandidate[];

@@ -12,6 +12,7 @@ export interface ShelfItem {
   category: Category;
   notes?: string;
   link?: string;
+  linkConfirmed?: boolean;   // true only when iOS supplied the exact source URL
   sourceCandidates?: SourceCandidate[];
   sourceConfidence?: number;
   sourceSearchQuery?: string;

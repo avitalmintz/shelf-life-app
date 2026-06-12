@@ -25,10 +25,13 @@ export function useSharedImageImporter() {
         const result = await categorizeScreenshot(imageDataUrl, { sourceURL: item.link, note: item.notes });
         const notes = [result.notes, item.notes].filter(Boolean).join("\n\n") || undefined;
         const link = result.link || item.link;
+        // item.link is only ever set from the iOS share sheet, so it counts as confirmed.
+        const linkConfirmed = result.link ? result.linkConfirmed : Boolean(item.link);
         update(item.id, {
           title: result.title,
           notes,
           link,
+          linkConfirmed,
           category: result.category,
           sourceCandidates: result.sourceCandidates,
           sourceConfidence: result.sourceConfidence,
@@ -46,6 +49,7 @@ export function useSharedImageImporter() {
             });
             update(item.id, {
               link: source.link || undefined,
+              linkConfirmed: source.link ? source.linkConfirmed : undefined,
               sourceCandidates: source.candidates,
               sourceConfidence: source.confidence,
               sourceSearchQuery: source.searchQuery,
