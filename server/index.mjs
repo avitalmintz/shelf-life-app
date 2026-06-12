@@ -7,8 +7,64 @@ const app = express();
 const port = Number(process.env.PORT ?? 8787);
 const host = process.env.HOST ?? "0.0.0.0";
 
+// Render runs behind a proxy; trust it so req.ip is the real client IP.
+app.set("trust proxy", 1);
+
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "12mb" }));
+
+// --- Abuse protection -------------------------------------------------------
+// 1) Shared app secret. Enforced only when APP_SHARED_SECRET is set on the
+//    server, so older app builds keep working until we flip it on.
+// 2) In-memory rate limiting per client IP: a short burst window plus a daily
+//    cap. Survives until the process restarts, which is fine for this purpose.
+
+const APP_SHARED_SECRET = process.env.APP_SHARED_SECRET ?? "";
+
+const RATE_BURST = { windowMs: 10 * 60 * 1000, max: 30 };   // 30 requests / 10 min
+const RATE_DAILY = { windowMs: 24 * 60 * 60 * 1000, max: 200 }; // 200 requests / day
+
+const rateBuckets = new Map();
+
+function checkRate(key, { windowMs, max }, now) {
+  const bucketKey = `${key}:${windowMs}`;
+  let bucket = rateBuckets.get(bucketKey);
+  if (!bucket || now - bucket.start >= windowMs) {
+    bucket = { start: now, count: 0 };
+    rateBuckets.set(bucketKey, bucket);
+  }
+  bucket.count += 1;
+  return bucket.count <= max;
+}
+
+// Periodically drop stale buckets so memory does not grow unbounded.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) {
+    const windowMs = Number(key.slice(key.lastIndexOf(":") + 1));
+    if (now - bucket.start >= windowMs) rateBuckets.delete(key);
+  }
+}, 60 * 60 * 1000).unref();
+
+app.use("/api", (req, res, next) => {
+  if (APP_SHARED_SECRET) {
+    const provided = req.get("x-shelf-key") ?? "";
+    if (provided !== APP_SHARED_SECRET) {
+      res.status(401).json({ error: "Unauthorized." });
+      return;
+    }
+  }
+
+  const ip = req.ip ?? "unknown";
+  const now = Date.now();
+  if (!checkRate(ip, RATE_BURST, now) || !checkRate(ip, RATE_DAILY, now)) {
+    res.status(429).json({ error: "Too many requests. Please try again later." });
+    return;
+  }
+
+  next();
+});
+// ---------------------------------------------------------------------------
 
 app.get("/", (_req, res) => {
   res.type("text/plain").send("Shelf Life backend is running. Try /health.");
